@@ -273,6 +273,13 @@ function esVistaCoach(role){
 }
 
 async function boot(){
+  // Si la persona llegó desde el link de "recuperar contraseña" que manda
+  // Supabase por correo, la URL trae type=recovery en el hash — en vez de
+  // arrancar la app normal, mostramos la pantalla para elegir clave nueva.
+  if(location.hash.includes('type=recovery')){
+    renderResetPassword();
+    return;
+  }
   const { data } = await sb.auth.getSession();
   session = data.session;
   if(!session){ profile = null; renderAuth(); return; }
@@ -290,11 +297,37 @@ async function loadProfile(){
 
 sb.auth.onAuthStateChange((_event, s) => {
   session = s;
+  // Red de seguridad: si por algún motivo el chequeo del hash en boot() no
+  // alcanzó a mostrar la pantalla de recuperación (ej: Supabase procesa el
+  // link un instante después), este evento igual la muestra.
+  if(_event === 'PASSWORD_RECOVERY'){
+    renderResetPassword();
+  }
 });
 
 // ---------- AUTENTICACIÓN ----------
 function renderAuth(mode){
   mode = mode || 'login';
+
+  if(mode === 'recover'){
+    root().innerHTML = `
+      <h1>Recuperar contraseña</h1>
+      <div class="sub">Escribe tu correo y te mandamos un link para elegir una contraseña nueva.</div>
+      <div class="card">
+        <label>Correo</label>
+        <input type="email" id="recover-email" placeholder="tucorreo@ejemplo.com" autocomplete="email">
+        <button class="btn" id="recover-submit">Enviar link de recuperación</button>
+        <div id="recover-msg" class="error-banner hidden" style="margin-top:12px;"></div>
+      </div>
+      <div class="auth-switch">
+        <button id="recover-back">Volver a entrar</button>
+      </div>
+    `;
+    document.getElementById('recover-back').onclick = () => renderAuth('login');
+    document.getElementById('recover-submit').onclick = () => handleRecoverRequest();
+    return;
+  }
+
   const isLogin = mode === 'login';
   root().innerHTML = `
     <h1>${isLogin ? '¿Quién eres?' : 'Crear tu cuenta'}</h1>
@@ -308,7 +341,8 @@ function renderAuth(mode){
       <input type="email" id="auth-email" placeholder="tucorreo@ejemplo.com" autocomplete="email">
       <label>Contraseña</label>
       <input type="password" id="auth-pass" placeholder="••••••••" autocomplete="${isLogin ? 'current-password' : 'new-password'}">
-      <button class="btn" id="auth-submit">${isLogin ? 'Entrar' : 'Crear cuenta'}</button>
+      ${isLogin ? `<div style="text-align:right; margin:8px 0 4px;"><button id="auth-forgot" style="background:none;border:none;color:var(--blue);text-decoration:underline;cursor:pointer;font-size:12px;padding:0;">¿Olvidaste tu contraseña?</button></div>` : ''}
+      <button class="btn" id="auth-submit" style="${isLogin ? 'margin-top:8px;' : ''}">${isLogin ? 'Entrar' : 'Crear cuenta'}</button>
       <div id="auth-error" class="error-banner hidden" style="margin-top:12px;"></div>
     </div>
     <div class="auth-switch">
@@ -318,6 +352,70 @@ function renderAuth(mode){
   `;
   document.getElementById('auth-toggle').onclick = () => renderAuth(isLogin ? 'signup' : 'login');
   document.getElementById('auth-submit').onclick = () => isLogin ? handleLogin() : handleSignup();
+  if(isLogin) document.getElementById('auth-forgot').onclick = () => renderAuth('recover');
+}
+
+async function handleRecoverRequest(){
+  const email = document.getElementById('recover-email').value.trim();
+  const msgBox = document.getElementById('recover-msg');
+  msgBox.classList.add('hidden');
+  if(!email){ showToast('Escribe tu correo'); return; }
+  const btn = document.getElementById('recover-submit');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  btn.disabled = false; btn.textContent = 'Enviar link de recuperación';
+  msgBox.classList.remove('hidden');
+  // Por seguridad no confirmamos si el correo existe o no en el sistema —
+  // el mismo mensaje se muestra exista la cuenta o no.
+  msgBox.textContent = error
+    ? 'No se pudo enviar el correo. Intenta de nuevo en unos minutos.'
+    : 'Si ese correo tiene una cuenta, te llegará un link para elegir tu nueva contraseña. Revisa también la carpeta de spam.';
+}
+
+function renderResetPassword(){
+  root().innerHTML = `
+    <h1>Elige tu nueva contraseña</h1>
+    <div class="sub">Escribe tu nueva contraseña para tu cuenta de STC app.</div>
+    <div class="card">
+      <label>Nueva contraseña</label>
+      <input type="password" id="newpass-1" placeholder="••••••••" autocomplete="new-password">
+      <label>Repite la contraseña</label>
+      <input type="password" id="newpass-2" placeholder="••••••••" autocomplete="new-password">
+      <button class="btn" id="newpass-submit" style="margin-top:8px;">Guardar contraseña</button>
+      <div id="newpass-error" class="error-banner hidden" style="margin-top:12px;"></div>
+    </div>
+  `;
+  document.getElementById('newpass-submit').onclick = handleUpdatePassword;
+}
+
+async function handleUpdatePassword(){
+  const p1 = document.getElementById('newpass-1').value;
+  const p2 = document.getElementById('newpass-2').value;
+  const errBox = document.getElementById('newpass-error');
+  errBox.classList.add('hidden');
+  if(!p1 || !p2){ showToast('Completa ambos campos'); return; }
+  if(p1.length < 6){ showToast('La contraseña debe tener al menos 6 caracteres'); return; }
+  if(p1 !== p2){ showToast('Las contraseñas no coinciden'); return; }
+  const btn = document.getElementById('newpass-submit');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  btn.disabled = false; btn.textContent = 'Guardar contraseña';
+  if(error){
+    errBox.textContent = 'No se pudo guardar la contraseña: ' + error.message;
+    errBox.classList.remove('hidden');
+    return;
+  }
+  // Limpiamos el hash de recuperación de la URL para no reprocesarlo si recarga.
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  showToast('¡Contraseña actualizada!');
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  if(!session){ renderAuth(); return; }
+  await loadProfile();
+  if(!profile){ renderAuth(); return; }
+  if(esVistaCoach(profile.role)) renderCoachHome(); else renderAlumnoHome();
 }
 
 async function handleLogin(){
