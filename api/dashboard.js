@@ -2,7 +2,7 @@
 // La clave RS_APP_KEY vive únicamente en las variables de entorno de Vercel; nunca llega al navegador.
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://mgghrslijmnlchsijwgt.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_hc44iXDAY2VEq095qdFNPA_4lmvYQKp';
-const SCRIPT_URL = process.env.RS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxSGsy5l6IsCW8oSGO8iPE2_liWvNOAIRpDa3lXsiAGVUtIpIyE3xu9xEObpm3_PL55oA/exec';
+const SCRIPT_URL = process.env.RS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwrXAxeQRk63Lzgyo09IfImlEdPxU4FlftFbiAc_jw4IznUrTmWo2x0ZYK3ajiXzseQig/exec';
 const ALLOWED = ['protocols', 'october'];
 
 function send(res, code, body) {
