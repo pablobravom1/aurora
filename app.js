@@ -1,5 +1,5 @@
 // ============================================================
-// UltraCarga — lógica de la app
+// Aurora — lógica de la app
 // ============================================================
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -377,7 +377,7 @@ async function handleRecoverRequest(){
 function renderResetPassword(){
   root().innerHTML = `
     <h1>Elige tu nueva contraseña</h1>
-    <div class="sub">Escribe tu nueva contraseña para tu cuenta de STC app.</div>
+    <div class="sub">Escribe tu nueva contraseña para tu cuenta de Aurora.</div>
     <div class="card">
       <label>Nueva contraseña</label>
       <input type="password" id="newpass-1" placeholder="••••••••" autocomplete="new-password">
@@ -1939,7 +1939,7 @@ function descargarRutinaPDF(rutina, dias){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   doc.setFontSize(18);
-  doc.text('STC app', 14, 18);
+  doc.text('Aurora', 14, 18);
   doc.setFontSize(13);
   doc.text(rutina.nombre, 14, 28);
   let y = 36;
@@ -2596,7 +2596,7 @@ async function descargarPDFEstadoProtocolos(profesores, alumnos){
     doc.setTextColor(255, 199, 44);
     doc.setFont(undefined, 'bold');
     doc.setFontSize(18);
-    doc.text('STC app', marginX, 13);
+    doc.text('Aurora', marginX, 13);
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
@@ -3172,7 +3172,7 @@ function initIOSInstallBanner(){
       <div class="ios-install-row">
         <div class="ios-install-icon">${ICONS.share}</div>
         <div>
-          <div class="ios-install-title">Instalá STC app en tu iPhone</div>
+          <div class="ios-install-title">Instalá Aurora en tu iPhone</div>
           <div>Tocá <b>Compartir</b> abajo en Safari y elegí <b>"Añadir a pantalla de inicio"</b>. Así la abrís como una app, sin el navegador.</div>
         </div>
       </div>
