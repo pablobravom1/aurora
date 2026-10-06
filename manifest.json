@@ -1,6 +1,6 @@
 {
-  "name": "STC app",
-  "short_name": "STC app",
+  "name": "Aurora",
+  "short_name": "Aurora",
   "description": "Registra tus entrenamientos y sigue tu rutina.",
   "start_url": "./",
   "scope": "./",
