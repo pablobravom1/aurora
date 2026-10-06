@@ -1,57 +1,21 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Aurora</title>
-<meta name="theme-color" content="#1A1D1C">
-<meta name="description" content="Registra tus entrenamientos y sigue tu rutina.">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-512.png" type="image/png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aurora · RS App</title>
+<meta name="theme-color" content="#0f172a">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Aurora">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-
-<div id="splash">
-  <div class="splash-mark">A</div>
-  <div class="splash-name">AURORA</div>
-  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
-</div>
-
-<div class="wrap">
-  <div class="topbar">
-    <div class="mark">A</div>
-    <div>
-      <div class="brand-name">Aurora</div>
-      <div class="brand-sub">Organización administrativa</div>
-    </div>
-  </div>
-
-  <div id="app-root">
-    <div class="loading">Cargando...</div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<!-- Librerías (todas por CDN, sin necesidad de instalar nada) -->
+<div id="root"><p class="boot">Cargando…</p></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
-<script>
-  if('serviceWorker' in navigator){
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
-  }
-</script>
 </body>
 </html>
