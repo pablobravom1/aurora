@@ -1,7 +1,7 @@
 {
   "name": "Aurora",
   "short_name": "Aurora",
-  "description": "Registra tus entrenamientos y sigue tu rutina.",
+  "description": "Aurora · RS App: checklist diario del Responsable de Sede y dashboards.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
