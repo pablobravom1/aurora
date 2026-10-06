@@ -1,16 +1,15 @@
 {
-  "name": "Aurora",
-  "short_name": "Aurora",
-  "description": "Aurora · RS App: checklist diario del Responsable de Sede y dashboards.",
+  "name": "Aura",
+  "short_name": "Aura",
+  "description": "Aura: checklist diario del Responsable de Sede y dashboards.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#1A1D1C",
-  "theme_color": "#1A1D1C",
+  "background_color": "#583fde",
+  "theme_color": "#0f172a",
   "orientation": "portrait",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "api/icon", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "api/icon", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
