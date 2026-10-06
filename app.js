@@ -125,7 +125,7 @@
   function boot() {
     var root = $('#root');
     if (!window.supabase || !CFG.url || !CFG.key) {
-      root.innerHTML = '<div class="login card"><h1>Aurora · RS App</h1><p>No se pudo cargar la librería de conexión. Revisa tu internet y recarga.</p></div>';
+      root.innerHTML = '<div class="login card"><h1>Aura</h1><p>No se pudo cargar la librería de conexión. Revisa tu internet y recarga.</p></div>';
       return;
     }
     sb = window.supabase.createClient(CFG.url, CFG.key, { auth: { persistSession: true, autoRefreshToken: true } });
@@ -145,24 +145,39 @@
     renderShell();
     route();
   }
-  function renderLogin(msg) {
+  var loginMode = 'in';
+  function renderLogin(msg, ok) {
+    var up = loginMode === 'up';
     $('#root').innerHTML =
-      '<form class="login card" id="lf"><h1>Aurora</h1><p class="hint">RS App · Responsable de Sede</p>' +
-      (msg ? '<div class="banner bad">' + esc(msg) + '</div>' : '') +
+      '<form class="login card" id="lf"><div style="text-align:center"><img src="api/icon" alt="" width="72" height="72" style="border-radius:18px"></div>' +
+      '<h1 style="text-align:center">Aura</h1><p class="hint" style="text-align:center">' + (up ? 'Crea tu cuenta' : 'Responsable de Sede · inicia sesión') + '</p>' +
+      (msg ? '<div class="banner ' + (ok ? 'ok' : 'bad') + '">' + esc(msg) + '</div>' : '') +
       '<label class="f" for="em">Correo</label><input id="em" type="email" autocomplete="username" required>' +
-      '<label class="f" for="pw">Contraseña</label><input id="pw" type="password" autocomplete="current-password" required>' +
-      '<p><button class="btn pri" style="width:100%" type="submit">Entrar</button></p></form>';
+      '<label class="f" for="pw">Contraseña' + (up ? ' (mínimo 8 caracteres)' : '') + '</label><input id="pw" type="password" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="' + (up ? 8 : 1) + '" required>' +
+      (up ? '<label class="f" for="pw2">Repite la contraseña</label><input id="pw2" type="password" autocomplete="new-password" required>' : '') +
+      '<p><button class="btn pri" style="width:100%" type="submit">' + (up ? 'Crear cuenta' : 'Entrar') + '</button></p>' +
+      '<p style="text-align:center"><button class="btn sm" type="button" id="swmode">' + (up ? 'Ya tengo cuenta: entrar' : 'No tengo cuenta: crear una') + '</button></p></form>';
+    $('#swmode').onclick = function () { loginMode = up ? 'in' : 'up'; renderLogin(); };
     $('#lf').addEventListener('submit', function (e) {
       e.preventDefault();
-      var btn = $('button', e.target); btn.disabled = true; btn.textContent = 'Entrando…';
-      sb.auth.signInWithPassword({ email: $('#em').value.trim(), password: $('#pw').value }).then(function (r) {
-        if (r.error) renderLogin(r.error.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos.' : 'No se pudo entrar: ' + r.error.message);
-      });
+      var email = $('#em').value.trim(), pw = $('#pw').value;
+      if (up && pw !== $('#pw2').value) { renderLogin('Las contraseñas no coinciden.'); return; }
+      var btn = $('button[type=submit]', e.target); btn.disabled = true; btn.textContent = up ? 'Creando…' : 'Entrando…';
+      if (up) {
+        sb.auth.signUp({ email: email, password: pw, options: { emailRedirectTo: location.origin } }).then(function (r) {
+          if (r.error) renderLogin('No se pudo crear la cuenta: ' + r.error.message);
+          else if (!r.data.session) { loginMode = 'in'; renderLogin('Cuenta creada. Te enviamos un correo para confirmarla: ábrelo, confirma y luego entra aquí.', true); }
+        });
+      } else {
+        sb.auth.signInWithPassword({ email: email, password: pw }).then(function (r) {
+          if (r.error) renderLogin(r.error.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos.' : 'No se pudo entrar: ' + r.error.message);
+        });
+      }
     });
   }
   function renderShell() {
     $('#root').innerHTML =
-      '<header class="top"><h1>Aurora · RS App</h1><div class="sub" id="who"></div></header>' +
+      '<header class="top"><h1>Aura</h1><div class="sub" id="who"></div></header>' +
       '<main class="wrap" id="main"></main>' +
       '<nav class="nav" id="nav">' +
       '<button data-go="checklist"><b>✅</b>Checklist</button>' +
@@ -493,7 +508,7 @@
       '<div class="card"><h2>Respaldo del historial</h2><p class="hint">Descarga todos tus días guardados. Conviene hacerlo de vez en cuando.</p>' +
       '<div class="row"><button class="btn pri" id="bj">Descargar JSON</button><button class="btn" id="bc">Descargar CSV</button></div><p class="hint" id="bmsg"></p></div>' +
       '<div class="card"><h2>Sesión</h2><p class="hint">' + esc(S.user.email || '') + '</p><button class="btn" id="out">Cerrar sesión</button></div>' +
-      '<div class="card"><h2>Acerca de</h2><p class="hint">Aurora · RS App. Los datos del checklist están en tu cuenta privada; las planillas se leen solo en modo lectura.</p></div>';
+      '<div class="card"><h2>Acerca de</h2><p class="hint">Aura. Los datos del checklist están en tu cuenta privada; las planillas se leen solo en modo lectura.</p></div>';
     $('#bj').onclick = function () { backup('json'); };
     $('#bc').onclick = function () { backup('csv'); };
     $('#out').onclick = async function () { await flush(); await sb.auth.signOut(); };
