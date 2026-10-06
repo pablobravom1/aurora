@@ -1,4 +1,4 @@
-# UltraCarga — notas del proyecto
+# Aurora — notas del proyecto
 
 App de seguimiento de entrenamientos para el gimnasio STC (Pablo Bravo). Stack: Supabase (Postgres + Auth + RLS) + Vercel (deploy) + GitHub (repo `pablobravom1/ultracarga`, deploy automático al hacer push a `main`). Producción: ultracarga.vercel.app.
 
