@@ -29,6 +29,11 @@ module.exports = async function handler(req, res) {
   try {
     const u = await fetch(SUPABASE_URL + '/auth/v1/user', { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + token } });
     if (!u.ok) return send(res, 401, { status: 'error', message: 'Sesión inválida o vencida' });
+    const user = await u.json();
+    const allowed = (process.env.RS_ALLOWED_EMAILS || 'pablobravo14610@gmail.com').toLowerCase().split(',').map((x) => x.trim());
+    if (!user.email || !user.email_confirmed_at || !allowed.includes(user.email.toLowerCase())) {
+      return send(res, 403, { status: 'error', message: 'Esta cuenta no tiene permiso para ver los dashboards' });
+    }
   } catch (e) {
     return send(res, 502, { status: 'error', message: 'No se pudo verificar la sesión' });
   }
