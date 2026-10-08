@@ -381,8 +381,7 @@ function rutinaCreadaPorAlumno(rutina){
   return !!rutina && rutina.origen === 'alumno';
 }
 function alumnoPuedeEditarRutina(rutina){
-  return !!rutina && !!profile && profile.role === 'alumno' &&
-    rutina.alumno_id === profile.id && rutina.origen === 'alumno' && rutina.creada_por === profile.id;
+  return false;
 }
 function routineOriginBadge(rutina, vistaAlumno){
   const propia = rutinaCreadaPorAlumno(rutina);
@@ -2237,18 +2236,6 @@ async function renderAlumnoHome(){
     </button>
     <div class="hidden" id="sesiones-list"></div>
 
-    <section class="self-routine-card ${rutinaPropia ? 'has-own-routine' : ''}">
-      <div class="self-routine-icon">${rutinaPropia ? ICONS.edit : ICONS.plus}</div>
-      <div class="self-routine-copy">
-        <div class="self-routine-kicker">RUTINA PERSONAL</div>
-        <h2>${rutinaPropia ? 'Tu rutina, a tu manera' : 'Crea tu propia rutina'}</h2>
-        <p>${rutinaPropia
-          ? 'Puedes cambiar días, ejercicios, series y objetivos cuando quieras.'
-          : 'Arma hasta 5 días con el mismo banco de ejercicios que usa tu profesor.'}</p>
-      </div>
-      <button class="btn-sm self-routine-action" id="${rutinaPropia ? 'btn-editar-mi-rutina' : 'btn-crear-mi-rutina'}">${rutinaPropia ? 'Editar mi rutina' : 'Crear mi rutina'} ${ICONS.chevronRight}</button>
-      ${rutina && !rutinaPropia ? '<div class="self-routine-disclaimer">Al guardarla quedará activa; la rutina actual de tu profesor seguirá disponible en “rutinas anteriores”.</div>' : ''}
-    </section>
 
     ${rutina ? `
       <button class="btn-toggle-rutina section-routine" id="btn-toggle-rutina">
@@ -2263,7 +2250,7 @@ async function renderAlumnoHome(){
         ${rutina.objetivo ? `<div class="sub" style="margin-bottom:12px;">${escapeHtml(rutina.objetivo)}</div>` : ''}
         ${renderRoutineDays(activeRutinaDias)}
       </div>
-    ` : `<div class="card">${emptyKiloHtml('Aún no tienes una rutina activa. Puedes crear la tuya o esperar una propuesta de tu profesor.', 'espera', 'padding:16px;')}</div>`}
+    ` : `<div class="card">${emptyKiloHtml('Aún no tienes una rutina activa. Tu profesor te asignará una pronto.', 'espera', 'padding:16px;')}</div>`}
 
     ${historialRutinas && historialRutinas.length ? `<button class="link-btn" id="btn-ver-mis-rutinas" style="margin-bottom:16px;">Ver rutinas anteriores (${historialRutinas.length}) →</button>` : ''}
 
@@ -2340,23 +2327,6 @@ async function renderAlumnoHome(){
   mostrarEntrevistaObjetivosAlumno();
   cargarFeedbackAlumno();
   mostrarAvisoPush();
-  const btnMiRutina = document.getElementById(rutinaPropia ? 'btn-editar-mi-rutina' : 'btn-crear-mi-rutina');
-  btnMiRutina.onclick = () => {
-    if(rutinaPropia){
-      const dias = activeRutinaDias.map(d => ({
-        nombre: d.nombre,
-        ejercicios: d.ejercicios.map(ex => ({
-          nombre: ex.nombre || '', series_objetivo: ex.series_objetivo != null ? String(ex.series_objetivo) : '',
-          reps_objetivo: ex.reps_objetivo || '', unidad_objetivo: ex.unidad_objetivo || 'reps', peso_objetivo: ex.peso_objetivo || '', nota: ex.nota || '',
-          descanso_seg: ex.descanso_seg != null ? String(ex.descanso_seg) : '',
-          tipo_serie_objetivo: ex.tipo_serie_objetivo || '', lado_objetivo: ex.lado_objetivo || '', circuito: ex.circuito || null
-        }))
-      }));
-      renderRutinaEditor(profile, { nombre: rutina.nombre, objetivo: rutina.objetivo || '', dias }, rutina.id, renderAlumnoHome);
-    } else {
-      renderRutinaEditor(profile, null, null, renderAlumnoHome);
-    }
-  };
   if(rutina){
     document.getElementById('btn-pdf-rutina').onclick = () => descargarRutinaPDF(rutina, activeRutinaDias);
     wireToggle('btn-toggle-rutina', 'rutina-detail-card');
@@ -4923,7 +4893,7 @@ async function renderHistorialRutinas(alumno, volverFn, permitirDuplicar){
 
   listEl.innerHTML = rutinas.map(r => {
     const dias = groupPorDia(r.rutina_ejercicios);
-    const puedeDuplicar = permitirDuplicar || profile.role === 'alumno';
+    const puedeDuplicar = permitirDuplicar;
     const puedeEditar = permitirDuplicar || alumnoPuedeEditarRutina(r);
     const puedeEliminar = permitirDuplicar || alumnoPuedeEditarRutina(r);
     return `
