@@ -1627,7 +1627,7 @@ async function elegirPlantillaParaAlumno(alumno){
 // ============================================================
 // PERFIL DEL PROFESOR (lo ven sus alumnos)
 // ============================================================
-const PERFIL_PRO_COLORES = ['#FFD446', '#FFD753', '#FFC91A', '#FFC72C', '#FF8A3D', '#FFA64D'];
+const PERFIL_PRO_COLORES = ['#FFF946', '#FFF953', '#FFF71A', '#FFFF00', '#FF8A3D', '#FFA64D'];
 const PERFIL_PRO_ESPECIALIDADES = ['Fuerza', 'Hipertrofia', 'Funcional', 'Pérdida de grasa', 'Movilidad', 'Rehabilitación', 'Rendimiento deportivo', 'Adulto mayor', 'Principiantes', 'Entrenamiento en casa'];
 const PERFIL_PRO_ICONOS = { 'Fuerza': '🏋️', 'Hipertrofia': '📊', 'Funcional': '⚡', 'Pérdida de grasa': '🔥', 'Movilidad': '🧘', 'Rehabilitación': '🩹', 'Rendimiento deportivo': '🏃', 'Adulto mayor': '🌿', 'Principiantes': '🌱', 'Entrenamiento en casa': '🏠' };
 
@@ -2656,7 +2656,7 @@ function mostrarRutinaEnviada(nombreAlumno, actualizada){
       <div class="rutina-enviada-escena">
         <div class="rutina-enviada-kilo">${window.UCKilo ? window.UCKilo.svg('anima', 78) : ''}</div>
         <svg class="rutina-enviada-sobre" viewBox="0 0 64 48" aria-hidden="true">
-          <rect x="3" y="5" width="58" height="38" rx="6" fill="#FFC72C" stroke="#111111" stroke-width="3"/>
+          <rect x="3" y="5" width="58" height="38" rx="6" fill="#FFFF00" stroke="#111111" stroke-width="3"/>
           <path d="M5 9 L32 29 L59 9" fill="none" stroke="#111111" stroke-width="3" stroke-linejoin="round"/>
         </svg>
         <div class="rutina-enviada-check">✓</div>
@@ -2691,7 +2691,7 @@ function avisarRutinaNueva(rutina){
   capa.innerHTML = `
     <div class="rutina-nueva-flip">
       <div class="rutina-nueva-cara rutina-nueva-dorso">
-        <svg viewBox="0 0 64 48" aria-hidden="true"><rect x="3" y="5" width="58" height="38" rx="6" fill="#FFC72C" stroke="#111111" stroke-width="3"/><path d="M5 9 L32 29 L59 9" fill="none" stroke="#111111" stroke-width="3" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 64 48" aria-hidden="true"><rect x="3" y="5" width="58" height="38" rx="6" fill="#FFFF00" stroke="#111111" stroke-width="3"/><path d="M5 9 L32 29 L59 9" fill="none" stroke="#111111" stroke-width="3" stroke-linejoin="round"/></svg>
       </div>
       <div class="rutina-nueva-cara logro-celebracion-card rutina-nueva-frente">
         <div class="logro-celebracion-kilo">${window.UCKilo ? window.UCKilo.svg('anima', 90) : ''}</div>
@@ -3677,10 +3677,10 @@ function setupProgresoChart(sesiones){
     empty.classList.add('hidden');
     const ctx = canvas.getContext('2d');
     const areaFill = ctx.createLinearGradient(0, 0, 0, 230);
-    areaFill.addColorStop(0, 'rgba(255,222,112,0.36)');
-    areaFill.addColorStop(0.55, 'rgba(255,222,112,0.15)');
-    areaFill.addColorStop(1, 'rgba(255,222,112,0)');
-    const pointPalette = ['#FFDE70', '#FFDE70', '#5EE3B6', '#FFD166'];
+    areaFill.addColorStop(0, 'rgba(255,255,102,0.36)');
+    areaFill.addColorStop(0.55, 'rgba(255,255,102,0.15)');
+    areaFill.addColorStop(1, 'rgba(255,255,102,0)');
+    const pointPalette = ['#FFFF66', '#FFFF66', '#5EE3B6', '#FFD166'];
     progresoChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -3688,7 +3688,7 @@ function setupProgresoChart(sesiones){
         datasets: [{
           label: 'Peso máximo (kg)',
           data: datos.registros.map(p => p.peso),
-          borderColor: '#FFDE70',
+          borderColor: '#FFFF66',
           backgroundColor: areaFill,
           borderWidth: 3,
           tension: 0.38,
@@ -3705,7 +3705,7 @@ function setupProgresoChart(sesiones){
         interaction: { intersect:false, mode:'index' },
         plugins: {
           legend: { display:false },
-          tooltip: { displayColors:false, backgroundColor:'#252525', titleColor:'#FBFBFB', bodyColor:'#BDBDBD', borderColor:'rgba(255,222,112,.35)', borderWidth:1, padding:12, cornerRadius:10 }
+          tooltip: { displayColors:false, backgroundColor:'#252525', titleColor:'#FBFBFB', bodyColor:'#BDBDBD', borderColor:'rgba(255,255,102,.35)', borderWidth:1, padding:12, cornerRadius:10 }
         },
         scales: {
           x: { ticks:{ color:'#9C9C9C', font:{ size:11 } }, grid:{ display:false }, border:{ display:false } },
@@ -4560,10 +4560,10 @@ async function generarImagenCompartir(r){
   g.addColorStop(0, '#2C2C2C'); g.addColorStop(0.7, '#111111'); g.addColorStop(1, '#111111');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   g = ctx.createRadialGradient(cx, 600, 0, cx, 600, 640);
-  g.addColorStop(0, 'rgba(255,222,112,.48)'); g.addColorStop(1, 'rgba(255,222,112,0)');
+  g.addColorStop(0, 'rgba(255,255,102,.48)'); g.addColorStop(1, 'rgba(255,255,102,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   g = ctx.createRadialGradient(cx, H, 0, cx, H, 620);
-  g.addColorStop(0, 'rgba(255,199,44,.20)'); g.addColorStop(1, 'rgba(255,199,44,0)');
+  g.addColorStop(0, 'rgba(255,255,0,.20)'); g.addColorStop(1, 'rgba(255,255,0,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -4571,14 +4571,14 @@ async function generarImagenCompartir(r){
   // Fecha
   const [yy, mm, dd] = String(r.fecha).split('-').map(Number);
   const f = new Date(yy, (mm || 1) - 1, dd || 1);
-  ctx.font = '500 28px "IBM Plex Mono", monospace'; ctx.fillStyle = '#FFDE70';
+  ctx.font = '500 28px "IBM Plex Mono", monospace'; ctx.fillStyle = '#FFFF66';
   compartirTextoEspaciado(ctx, `${COMPARTIR_DIAS[f.getDay()]} ${f.getDate()} · ${COMPARTIR_MESES[f.getMonth()]}`.toUpperCase(), cx, 250, 7);
 
   // Título
   ctx.fillStyle = '#FBFBFB';
   compartirAjustar(ctx, 'ENTRENAMIENTO', '700 {t}px Oswald, sans-serif', 124, 920);
   ctx.fillText('ENTRENAMIENTO', cx, 380);
-  ctx.fillStyle = '#FFC72C';
+  ctx.fillStyle = '#FFFF00';
   compartirAjustar(ctx, 'COMPLETADO', '700 {t}px Oswald, sans-serif', 124, 920);
   ctx.fillText('COMPLETADO', cx, 500);
 
@@ -4598,7 +4598,7 @@ async function generarImagenCompartir(r){
 
   // Número principal: volumen (o series si fue sin peso)
   const conPeso = r.volumen > 0;
-  ctx.fillStyle = '#FFC72C';
+  ctx.fillStyle = '#FFFF00';
   ctx.font = '700 190px Oswald, sans-serif';
   ctx.fillText(conPeso ? r.volumen.toLocaleString('es-CL') : String(r.series), cx, 1100);
   ctx.font = '500 30px "IBM Plex Mono", monospace'; ctx.fillStyle = '#AEAEAE';
@@ -4618,7 +4618,7 @@ async function generarImagenCompartir(r){
     ctx.textAlign = 'left';
     partes.forEach((p, i) => {
       ctx.fillStyle = '#FBFBFB'; ctx.fillText(p, x, 1335); x += ctx.measureText(p).width;
-      if(i < partes.length - 1){ ctx.fillStyle = '#FFDE70'; ctx.fillText(sep, x, 1335); x += ctx.measureText(sep).width; }
+      if(i < partes.length - 1){ ctx.fillStyle = '#FFFF66'; ctx.fillText(sep, x, 1335); x += ctx.measureText(sep).width; }
     });
     ctx.textAlign = 'center';
   }
@@ -4634,7 +4634,7 @@ async function generarImagenCompartir(r){
     const x = bx + i * (bw + 20);
     compartirCajaRedonda(ctx, x, by, bw, bh, 28);
     ctx.fillStyle = c.pr ? 'rgba(255,209,102,.10)' : 'rgba(17,17,17,.55)'; ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = c.pr ? 'rgba(255,209,102,.6)' : 'rgba(255,221,111,.25)'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = c.pr ? 'rgba(255,209,102,.6)' : 'rgba(255,255,102,.25)'; ctx.stroke();
     ctx.fillStyle = c.pr ? '#FFD166' : '#FBFBFB';
     ctx.font = '700 76px Oswald, sans-serif'; ctx.fillText(c.n, x + bw / 2, by + 96);
     ctx.fillStyle = '#AEAEAE'; ctx.font = '500 22px "IBM Plex Mono", monospace';
@@ -4645,11 +4645,12 @@ async function generarImagenCompartir(r){
   ctx.font = '700 40px Oswald, sans-serif';
   const anchoMarca = ctx.measureText(COMPARTIR_MARCA).width + 20;
   const mx = cx - (58 + 18 + anchoMarca) / 2, my = 1640;
-  ctx.fillStyle = '#FFC72C';
-  ctx.beginPath();
-  ctx.moveTo(mx, my + 11.6); ctx.lineTo(mx + 11.6, my); ctx.lineTo(mx + 58, my); ctx.lineTo(mx + 58, my + 46.4);
-  ctx.lineTo(mx + 46.4, my + 58); ctx.lineTo(mx, my + 58); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#111111'; ctx.font = '700 19px Oswald, sans-serif'; ctx.fillText('STC', mx + 29, my + 37);
+  try {
+    const lg = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = 'logo.png'; });
+    ctx.drawImage(lg, mx, my, 58, 58);
+  } catch(e){
+    ctx.fillStyle = '#FFFF00'; ctx.beginPath(); ctx.arc(mx + 29, my + 29, 29, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.textAlign = 'left';
   ctx.fillStyle = '#FBFBFB'; ctx.font = '700 40px Oswald, sans-serif';
   let lx = mx + 58 + 18;
@@ -4662,7 +4663,7 @@ async function generarImagenCompartir(r){
   // "Junto a mi profesor/a ..." (solo en la imagen del alumno)
   const junto = (typeof textoJuntoProfesor === 'function') ? await textoJuntoProfesor() : '';
   if(junto){
-    ctx.textAlign = 'center'; ctx.fillStyle = '#FFC72C';
+    ctx.textAlign = 'center'; ctx.fillStyle = '#FFFF00';
     const tamJ = compartirAjustar(ctx, junto, '700 {t}px Oswald, sans-serif', 44, 900);
     ctx.font = '700 ' + tamJ + 'px Oswald, sans-serif';
     ctx.fillText(junto, cx, 1810);
@@ -4763,7 +4764,7 @@ function renderResumenSesion(r){
   descansoDetener();
   const kilo = window.UCKilo ? window.UCKilo.svg('celebra', 120) : '';
   let confeti = '';
-  const colores = ['#FFC72C', '#FFDE70', '#FFDE70', '#5EE3B6', '#FFD166'];
+  const colores = ['#FFFF00', '#FFFF66', '#FFFF66', '#5EE3B6', '#FFD166'];
   for(let i = 0; i < 26; i++){
     confeti += `<span class="resumen-confeti" style="left:${Math.round(Math.random()*96)+2}%; background:${colores[i % 5]}; --d:${(Math.random()*0.6).toFixed(2)}s; --r:${Math.round(Math.random()*540 - 270)}deg"></span>`;
   }
@@ -5392,7 +5393,7 @@ function renderListaAlumnosProfesor(holderId, profesor, alumnosDelProfesor){
 function pctColorProtocolo(pct){
   if(pct === null || pct === undefined) return '#9CA39A';
   if(pct >= 90) return '#4CAF6D';
-  if(pct >= 85) return '#FFC72C';
+  if(pct >= 85) return '#FFFF00';
   return '#E5484D';
 }
 
@@ -5627,19 +5628,19 @@ async function descargarPDFEstadoProtocolos(profesores, alumnos){
       { text: 'PROFESOR', align: 'left', bold: true },
       ...statsPorProfesor.map(s => ({ text: primerNombre(s.profesor.nombre), bold: true })),
       { text: 'TOTAL', bold: true }
-    ], { rowH: 8, bgColor: '#0C100D', textColor: '#FFC72C' });
+    ], { rowH: 8, bgColor: '#0C100D', textColor: '#FFFF00' });
 
     y = filaGrid(doc, marginX, y, colWidths, [
       { text: 'Alumnos', align: 'left', bold: true },
       ...statsPorProfesor.map(s => ({ text: String(s.n) })),
       { text: String(universoTotal), bold: true }
-    ], { rowH: 7, bgColor: '#F5F4F0', totalColBg: '#FFE9A8' });
+    ], { rowH: 7, bgColor: '#F5F4F0', totalColBg: '#FFFCA8' });
 
     y = filaGrid(doc, marginX, y, colWidths, [
       { text: '% General', align: 'left', bold: true },
       ...statsPorProfesor.map(s => ({ text: s.pctTotal === null ? 's/d' : `${Math.round(s.pctTotal)}%`, color: pctColorProtocolo(s.pctTotal), bold: true })),
       { text: pctGranTotal === null ? 's/d' : `${Math.round(pctGranTotal)}%`, color: pctColorProtocolo(pctGranTotal), bold: true }
-    ], { rowH: 7.5, bgColor: '#FBF3D9', totalColBg: '#FFE9A8' });
+    ], { rowH: 7.5, bgColor: '#FBF3D9', totalColBg: '#FFFCA8' });
     doc.setDrawColor(220, 220, 214);
     doc.line(marginX, y, marginX + wTotalGrid, y);
     y += 3;
@@ -5663,7 +5664,7 @@ async function descargarPDFEstadoProtocolos(profesores, alumnos){
         { text: '% al día', align: 'left', bold: true },
         ...statsPorProfesor.map(s => ({ text: s[b.pctKey] === null ? 's/d' : `${Math.round(s[b.pctKey])}%`, color: pctColorProtocolo(s[b.pctKey]), bold: true })),
         { text: b.pctGran === null ? 's/d' : `${Math.round(b.pctGran)}%`, color: pctColorProtocolo(b.pctGran), bold: true }
-      ], { rowH: 7.5, bgColor: '#FBF3D9', totalColBg: '#FFE9A8' });
+      ], { rowH: 7.5, bgColor: '#FBF3D9', totalColBg: '#FFFCA8' });
 
       doc.setDrawColor(220, 220, 214);
       doc.line(marginX, y, marginX + wTotalGrid, y);
