@@ -1,0 +1,21 @@
+name: Desempaquetar app
+on:
+  push:
+    branches: [stc-clon-ultracarga]
+    paths: ['STC-App-Clon.zip']
+permissions:
+  contents: write
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Desempaquetar y guardar
+        run: |
+          unzip -o STC-App-Clon.zip
+          rm STC-App-Clon.zip
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Agregar app STC (clon UltraCarga)"
+          git push
