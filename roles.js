@@ -32,7 +32,7 @@ const $ = (s, r) => (r || document).querySelector(s);
   .rl-head h1{margin:0;font-size:20px}
   .rl-nav{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;color:var(--chalk);cursor:pointer;font-family:inherit}
   .rl-nav:hover{border-color:var(--blue)}
-  .rl-nav .rl-ico{width:38px;height:38px;border-radius:10px;background:rgba(255,199,44,.14);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  .rl-nav .rl-ico{width:38px;height:38px;border-radius:10px;background:rgba(255,255,0,.14);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
   .rl-nav .rl-t{flex:1;min-width:0}
   .rl-nav small{display:block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;color:var(--blue);text-transform:uppercase}
   .rl-nav b{display:block;font-family:Oswald,sans-serif;font-size:15.5px;font-weight:600;letter-spacing:.02em}
@@ -74,7 +74,7 @@ const $ = (s, r) => (r || document).querySelector(s);
   .ck-table th{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;color:var(--chalk-dim);font-weight:500;border-top:0}
   .ck-pill{display:inline-block;min-width:44px;text-align:center;border-radius:99px;padding:2px 8px;font-size:11.5px;background:var(--surface-2)}
   .ck-pill.full{background:rgba(101,214,110,.2);color:var(--green)}
-  .ck-pill.mid{background:rgba(255,199,44,.18);color:var(--blue)}
+  .ck-pill.mid{background:rgba(255,255,0,.18);color:var(--blue)}
   .ck-pill.low{background:rgba(255,107,99,.18);color:var(--red)}
   .rl-perfil{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding:10px 0}
   .rl-perfil .n{flex:1;min-width:140px;font-size:13.5px}
@@ -705,7 +705,7 @@ window.renderMetricas = async function(volver, claves, titulo){
   const edit = esGestor();
   const fuentes = FUENTES.filter(f => claves.includes(f.k));
   root().innerHTML = `${cabecera(titulo, 'mt-volver')}
-    <div class="ck-banner" style="background:rgba(255,199,44,.1);border:1px solid var(--blue)"><b>MAQUETA.</b> Así se verá cada panel. Los números aparecen como «—» hasta conectar el Excel; mientras tanto puedes dejar el enlace para abrirlo directo.</div>
+    <div class="ck-banner" style="background:rgba(255,255,0,.1);border:1px solid var(--blue)"><b>MAQUETA.</b> Así se verá cada panel. Los números aparecen como «—» hasta conectar el Excel; mientras tanto puedes dejar el enlace para abrirlo directo.</div>
     ${fuentes.map(f => { const x = m[f.k] || { url: '', nota: '' }; const ok = urlSegura(x.url);
       return `<div class="card"><div class="ck-sec-h"><span style="font-size:22px">${f.ico}</span><div style="flex:1"><h2 style="margin:0">${esc(f.t)}</h2><p class="ck-hint" style="margin:2px 0 0">${esc(f.sub)}</p></div><span class="ck-chip">Sin conectar</span></div>
         ${f.tiles.length ? `<div class="mt-grid">${f.tiles.map(t => `<div class="mt-tile"><b>—</b><small>${esc(t[0])}</small><em>${esc(t[1])}</em></div>`).join('')}</div>` : ''}
