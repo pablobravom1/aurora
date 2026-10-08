@@ -277,8 +277,7 @@ function ckRender(){
     if(rs && s.id === 'cierre') h += '<label style="margin-top:12px">Caja — salida de turno: monto entregado o resguardado ($)</label><input type="text" inputmode="numeric" data-k="caja.salida">';
     h += '</div>';
     if(rs && s.id === 'apertura'){
-      h += `<div class="card"><h2>2 · Llegada del RS</h2><p class="ck-hint">Al iniciar tu turno, siempre en este orden</p><label>2.1 Revisión de KPIs — primera medida</label>` +
-        KPIS.map(k => `<div class="ck-kpi"><div>${esc(k[1])}<small>${esc(k[2])}</small></div><input type="text" inputmode="decimal" data-k="kpi.${k[0]}"></div>`).join('') +
+      h += `<div class="card"><h2>2 · Llegada del RS</h2><p class="ck-hint">Al iniciar tu turno, siempre en este orden</p><label>2.1 Revisión de KPIs — primera medida</label><p class="ck-hint">Los KPIs ya no se anotan aquí: se leen desde las planillas en «Métricas de la empresa».</p>` +
         `<label style="margin-top:12px">2.2 Pendientes del RS (compras, arreglos, tareas, proveedores)</label><textarea data-k="notes.pendientes_rs"></textarea></div>`;
     }
     if(rs && s.id === 'auditoria') h += '<div class="card"><h2>2.4 Caja — entrada de turno</h2><label>Monto recibido al inicio del turno ($)</label><input type="text" inputmode="numeric" data-k="caja.entrada"></div>';
@@ -476,7 +475,7 @@ window.renderConexiones = async function(titulo, claves, volver){
 window.montarGestionPerfiles = async function(holderId){
   const holder = document.getElementById(holderId);
   holder.innerHTML = `<div class="loading">Cargando personas...</div>`;
-  const { data, error } = await sb.from('profiles').select('id,nombre,role,es_supervisor,username').order('nombre');
+  const { data, error } = await sb.from('profiles').select('id,nombre,role,es_supervisor,username,perfil_pro').order('nombre');
   if(error){ holder.innerHTML = `<div class="error-banner">No se pudo cargar la lista.</div>`; return; }
   const todos = (data || []).filter(p => p.role !== 'super_admin' && p.id !== profile.id);
   holder.innerHTML = `<div class="card"><p class="ck-hint">Aquí le das un perfil a una cuenta que ya existe (la persona crea su cuenta con su correo y tú le asignas el perfil). Solo tú puedes hacer estos cambios.</p>
@@ -492,23 +491,36 @@ window.montarGestionPerfiles = async function(holderId){
     const fila = (p) => `<div class="rl-perfil" data-id="${p.id}"><div class="n">${esc(p.nombre || '(sin nombre)')}<small>${esc(rolEtiqueta(p))}</small></div>
       <select data-rol><option value="alumno"${p.role === 'alumno' ? ' selected' : ''}>Alumno</option><option value="profesor"${p.role === 'profesor' ? ' selected' : ''}>Profesor</option><option value="responsable_sede"${p.role === 'responsable_sede' ? ' selected' : ''}>Responsable de Sede</option><option value="loc"${p.role === 'loc' ? ' selected' : ''}>LOC</option></select>
       <label class="sup"><input type="checkbox" data-sup${p.es_supervisor ? ' checked' : ''}${p.role === 'profesor' ? '' : ' disabled'}> Supervisor</label>
-      <button class="btn-sm" data-guardar>Guardar</button></div>`;
+      <button class="btn-sm" data-guardar>Guardar</button>
+      <div class="rl-extra" data-extra${p.role === 'profesor' ? '' : ' hidden'}>
+        <select data-trat title="Cómo se le nombra al compartir"><option value="">Tratamiento: automático</option><option value="profesor"${(p.perfil_pro || {}).tratamiento === 'profesor' ? ' selected' : ''}>«mi profesor»</option><option value="profesora"${(p.perfil_pro || {}).tratamiento === 'profesora' ? ' selected' : ''}>«mi profesora»</option></select>
+        <input type="text" data-nc maxlength="40" placeholder="Nombre al compartir (ej. José Manuel)" value="${esc((p.perfil_pro || {}).nombre_compartir || '')}">
+      </div></div>`;
     lista.innerHTML = (staff.length ? `<div class="rl-group-title">Equipo (${staff.length})</div>${staff.map(fila).join('')}` : '') +
       (mostrarAlumnos.length ? `<div class="rl-group-title">Alumnos que coinciden</div>${mostrarAlumnos.map(fila).join('')}` : (q ? '' : `<p class="ck-hint" style="margin-top:12px">Para dar un perfil a un alumno, búscalo por su nombre.</p>`));
     lista.querySelectorAll('.rl-perfil').forEach(row => {
       const id = row.getAttribute('data-id');
       const selRol = row.querySelector('[data-rol]'), chk = row.querySelector('[data-sup]'), btn = row.querySelector('[data-guardar]');
-      selRol.onchange = () => { chk.disabled = selRol.value !== 'profesor'; if(selRol.value !== 'profesor') chk.checked = false; };
+      const extra = row.querySelector('[data-extra]'), selTrat = row.querySelector('[data-trat]'), inNc = row.querySelector('[data-nc]');
+      selRol.onchange = () => { chk.disabled = selRol.value !== 'profesor'; if(selRol.value !== 'profesor') chk.checked = false; extra.hidden = selRol.value !== 'profesor'; };
       btn.onclick = async () => {
         if(btn.dataset.ok !== '1'){ btn.dataset.ok = '1'; btn.textContent = '¿Confirmar?'; setTimeout(() => { btn.dataset.ok = ''; btn.textContent = 'Guardar'; }, 4000); return; }
         const rol = selRol.value, sup = rol === 'profesor' && chk.checked;
         const upd = { role: rol, es_supervisor: sup };
         if(rol !== 'alumno') upd.profesor_id = null;
+        const pPrev = todos.find(x => x.id === id);
+        if(rol === 'profesor'){
+          const pp = Object.assign({}, (pPrev && pPrev.perfil_pro && typeof pPrev.perfil_pro === 'object') ? pPrev.perfil_pro : {});
+          if(selTrat.value) pp.tratamiento = selTrat.value; else delete pp.tratamiento;
+          const nc = inNc.value.trim(); if(nc) pp.nombre_compartir = nc; else delete pp.nombre_compartir;
+          upd.perfil_pro = pp;
+        }
         btn.disabled = true;
         const { error: e2 } = await sb.from('profiles').update(upd).eq('id', id);
         btn.disabled = false; btn.dataset.ok = ''; btn.textContent = 'Guardar';
         if(e2){ showToast('No se pudo guardar: ' + e2.message); return; }
-        const p = todos.find(x => x.id === id); if(p){ p.role = rol; p.es_supervisor = sup; }
+        const p = todos.find(x => x.id === id); if(p){ p.role = rol; p.es_supervisor = sup; if(upd.perfil_pro) p.perfil_pro = upd.perfil_pro; }
+        window.__profeCompartir = null;
         showToast('Perfil actualizado');
         pintar();
       };
@@ -533,27 +545,29 @@ window.rolesMontarHome = function(){
     h += `<div class="rl-group-title">Gestión del gimnasio</div>`;
     h += iconoNav('✅', 'Responsable de sede', 'Gestión gimnasio – checklist', 'Tu checklist diario de apertura, turno y cierre', 'rl-btn-ck-rs');
     h += iconoNav('👀', 'Supervisión', 'Supervisar checklist diario', 'Lo que marcó hoy el Profesor supervisor', 'rl-btn-ck-sup');
-    h += iconoNav('📊', 'Empresa', 'KPIs de la empresa', 'Enlace a la planilla de KPIs', 'rl-btn-kpi');
+    h += iconoNav('🗒️', 'Equipo', 'Tareas', 'Tareas para ti y las que asignaste', 'rl-btn-tareas');
+    h += iconoNav('📊', 'Empresa', 'Métricas de la empresa', 'Retención, ventas, protocolos, leads y más (maqueta)', 'rl-btn-metricas');
     if(esAdminEstricto()){
       h += iconoNav('🧭', 'Solo administrador', 'Checklist del Responsable de Sede', 'Ver lo que marcó el RS (vista del LOC)', 'rl-btn-ver-rs');
-      h += iconoNav('💼', 'Comercial', 'Excel de ventas, protocolos y leads', 'Los enlaces que ve el LOC', 'rl-btn-comercial');
       h += `<button class="btn-toggle-rutina" id="rl-btn-perfiles"><span class="toggle-label">${ICONS.users} Perfiles y roles</span>${toggleStateHtml()}</button><div class="hidden" id="rl-perfiles-holder"></div>`;
-    } else {
-      h += iconoNav('💼', 'Comercial', 'Excel de ventas, protocolos y leads', 'Los enlaces que ve el LOC', 'rl-btn-comercial');
     }
     h += `<div class="rl-group-title">Alumnos y profesores</div>`;
   } else if(esSupervisor()){
     h += `<div class="rl-group-title">Supervisión</div>`;
     h += iconoNav('✅', 'Profesor supervisor', 'Mi checklist de supervisión', 'Tu checklist diario de turno', 'rl-btn-ck-sup-mio');
+    h += iconoNav('🗒️', 'Equipo', 'Tareas', 'Tareas para ti y las que asignaste', 'rl-btn-tareas');
+    h += iconoNav('🎯', 'Comercial', 'Clases de prueba', 'Leads y profesor asignado a cada clase', 'rl-btn-leads');
   } else return;
   bloque.innerHTML = h;
   ancla.insertAdjacentElement('beforebegin', bloque);
+  if(document.getElementById('rl-btn-tareas')) badgeTareas('rl-btn-tareas');
   const on = (id, fn) => { const b = document.getElementById(id); if(b) b.onclick = fn; };
   on('rl-btn-ck-rs', () => abrirChecklist('rs', { volver, titulo: 'Gestión gimnasio – checklist', extraBtn: { texto: '👀 Supervisar checklist diario', accion: () => renderSupervisarChecklist('supervisor', { volver: () => abrirChecklist('rs', { volver, titulo: 'Gestión gimnasio – checklist', extraBtn: null }) }) } }));
   on('rl-btn-ck-sup', () => renderSupervisarChecklist('supervisor', { volver }));
   on('rl-btn-ver-rs', () => renderSupervisarChecklist('rs', { volver }));
-  on('rl-btn-kpi', () => renderConexiones('KPIs de la empresa', ['kpi'], volver));
-  on('rl-btn-comercial', () => renderConexiones('Comercial', ['ventas', 'protocolos', 'leads', 'evo'], volver));
+  on('rl-btn-tareas', () => renderTareas(volver));
+  on('rl-btn-metricas', () => renderMetricas(volver));
+  on('rl-btn-leads', () => renderMetricas(volver, ['leads'], 'Clases de prueba'));
   on('rl-btn-ck-sup-mio', () => abrirChecklist('supervisor', { volver, titulo: 'Mi checklist de supervisión' }));
   if(document.getElementById('rl-btn-perfiles')) wireToggle('rl-btn-perfiles', 'rl-perfiles-holder', () => montarGestionPerfiles('rl-perfiles-holder'));
 };
@@ -566,27 +580,174 @@ window.renderLocHome = async function(){
       <div class="student-header-actions"><button class="switch-user" id="loc-logout">${ICONS.logout} Salir</button></div>
     </div>
     <div class="rl-group-title">Comercial</div>
-    ${iconoNav('📈', 'Ventas', 'Excel de ventas', '', 'loc-ventas')}
-    ${iconoNav('📋', 'Protocolos', 'Protocolos', '', 'loc-protocolos')}
-    ${iconoNav('🎯', 'Leads', 'Clases de prueba (leads)', '', 'loc-leads')}
-    ${iconoNav('🔌', 'EVO', 'EVO', 'La conexión directa por API se agrega más adelante', 'loc-evo')}
+    ${iconoNav('📊', 'Empresa', 'Métricas y Excel', 'Retención, ventas, protocolos, leads y más (maqueta)', 'loc-metricas')}
     <div class="rl-group-title">Operación</div>
+    ${iconoNav('🗒️', 'Equipo', 'Tareas', 'Tareas para ti y las que asignaste', 'loc-tareas')}
     ${iconoNav('✅', 'Responsable de sede', 'Checklist del Responsable de Sede', 'Ver cómo va su gestión diaria', 'loc-ck')}
     ${iconoNav('👤', 'Mi cuenta', 'Mi perfil', '', 'loc-perfil')}`;
   document.getElementById('loc-logout').onclick = handleLogout;
-  const m = await cargarConexiones();
-  const abrir = (clave, nombre) => () => {
-    const u = m && m[clave] ? urlSegura(m[clave].url) : '';
-    if(!u){ showToast('Aún no hay enlace para ' + nombre + '. Pídeselo al Responsable de Sede.'); return; }
-    window.open(u, '_blank', 'noopener');
-  };
-  document.getElementById('loc-ventas').onclick = abrir('ventas', 'ventas');
-  document.getElementById('loc-protocolos').onclick = abrir('protocolos', 'protocolos');
-  document.getElementById('loc-leads').onclick = abrir('leads', 'leads');
-  document.getElementById('loc-evo').onclick = abrir('evo', 'EVO');
+  document.getElementById('loc-metricas').onclick = () => renderMetricas(renderLocHome);
+  document.getElementById('loc-tareas').onclick = () => renderTareas(renderLocHome);
+  badgeTareas('loc-tareas');
   document.getElementById('loc-ck').onclick = () => renderSupervisarChecklist('rs', { volver: renderLocHome });
   document.getElementById('loc-perfil').onclick = () => renderMiPerfil(false);
 };
+
+/* =====================================================================
+   TAREAS (LOC → RS, RS → Profesor supervisor)
+   ===================================================================== */
+(function(){
+  const st = document.createElement('style');
+  st.id = 'roles-css2';
+  st.textContent = `
+  .mt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0}
+  .mt-tile{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+  .mt-tile b{display:block;font-family:Oswald,sans-serif;font-size:22px;color:var(--blue)}
+  .mt-tile small{display:block;font-size:11.5px;color:var(--chalk)}
+  .mt-tile em{display:block;font-style:normal;font-size:10.5px;color:var(--chalk-dim)}
+  .rl-extra{display:flex;gap:8px;flex-wrap:wrap;flex-basis:100%}
+  .rl-extra[hidden]{display:none}
+  .rl-extra select,.rl-extra input{margin:0;font-size:12px;padding:7px 8px;width:auto;flex:1;min-width:130px}
+  `;
+  document.head.appendChild(st);
+})();
+const fmtLimite = (f) => f ? new Date(f + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }) : '';
+window.renderTareas = async function(volver){
+  root().innerHTML = `<div class="loading">Cargando tareas...</div>`;
+  const [rt, ra] = await Promise.all([sb.rpc('tareas_listar'), sb.rpc('asignables_tarea')]);
+  if(rt.error){ root().innerHTML = `<div class="error-banner">No se pudieron cargar las tareas: ${esc(rt.error.message)}</div><button class="btn-ghost" id="tr-err">Volver</button>`; $('#tr-err').onclick = volver; return; }
+  const todas = rt.data || [], asignables = ra.data || [], hoy = hoyISO();
+  const mias = todas.filter(t => t.asignada_a === profile.id);
+  const dadas = todas.filter(t => t.creada_por === profile.id);
+  const otras = esAdminEstricto() ? todas.filter(t => t.asignada_a !== profile.id && t.creada_por !== profile.id) : [];
+  const pendMias = mias.filter(t => t.estado !== 'hecha').length;
+  const venc = (t) => t.estado !== 'hecha' && t.fecha_limite && t.fecha_limite < hoy;
+  const limite = (t) => (t.fecha_limite ? ' · límite ' + esc(fmtLimite(t.fecha_limite)) : '') + (venc(t) ? ' · <b style="color:var(--red)">vencida</b>' : '');
+  const filaMia = (t) => `<div class="ck-item ${t.estado === 'hecha' ? 'is-h' : ''}"><button class="ck-st" type="button" data-hecha="${t.id}" data-est="${t.estado}">${t.estado === 'hecha' ? '✓ Hecha' : '☐ Pendiente'}</button><div class="lbl"><b>${esc(t.titulo)}</b>${t.detalle ? `<div>${esc(t.detalle)}</div>` : ''}<div class="ck-hint" style="margin:3px 0 0">De ${esc(t.creada_por_nombre)}${limite(t)}</div></div></div>`;
+  const hechaTxt = (t) => t.hecha_at ? ' · hecha ' + esc(new Date(t.hecha_at).toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) : '';
+  const pill = (t) => `<span class="ck-pill ${t.estado === 'hecha' ? 'full' : venc(t) ? 'low' : 'mid'}" style="flex-shrink:0;min-width:98px">${t.estado === 'hecha' ? '✓ Hecha' : venc(t) ? 'Vencida' : 'Pendiente'}</span>`;
+  const filaDada = (t) => `<div class="ck-item ${t.estado === 'hecha' ? 'is-h' : ''}">${pill(t)}<div class="lbl"><b>${esc(t.titulo)}</b>${t.detalle ? `<div>${esc(t.detalle)}</div>` : ''}<div class="ck-hint" style="margin:3px 0 0">Para ${esc(t.asignada_a_nombre)}${limite(t)}${hechaTxt(t)}</div></div><button class="btn-sm" type="button" data-borrar="${t.id}">Quitar</button></div>`;
+  const filaOtra = (t) => `<div class="ck-item ${t.estado === 'hecha' ? 'is-h' : ''}">${pill(t)}<div class="lbl"><b>${esc(t.titulo)}</b><div class="ck-hint" style="margin:3px 0 0">De ${esc(t.creada_por_nombre)} para ${esc(t.asignada_a_nombre)}${limite(t)}${hechaTxt(t)}</div></div></div>`;
+  root().innerHTML = `${cabecera('Tareas', 'tr-volver')}
+    ${asignables.length ? `<div class="card"><h2>Asignar una tarea</h2>
+      <label>Para</label><select id="tr-para">${asignables.map(a => `<option value="${a.id}">${esc(a.nombre)} · ${esc(a.etiqueta)}</option>`).join('')}</select>
+      <label>Tarea</label><input type="text" id="tr-titulo" maxlength="200" placeholder="Qué hay que hacer">
+      <label>Detalle (opcional)</label><textarea id="tr-detalle" maxlength="2000"></textarea>
+      <label>Fecha límite (opcional)</label><input type="date" id="tr-limite">
+      <button class="btn" id="tr-crear">Asignar tarea</button></div>` : ''}
+    ${mias.length || !esAdminEstricto() ? `<div class="card"><h2>Mis tareas${pendMias ? ' · ' + pendMias + ' pendiente' + (pendMias === 1 ? '' : 's') : ''}</h2>${mias.length ? mias.map(filaMia).join('') : '<p class="ck-hint">No tienes tareas asignadas.</p>'}</div>` : ''}
+    ${asignables.length || dadas.length ? `<div class="card"><h2>Tareas que asigné</h2>${dadas.length ? dadas.map(filaDada).join('') : '<p class="ck-hint">Aún no has asignado tareas.</p>'}</div>` : ''}
+    ${otras.length ? `<div class="card"><h2>Otras tareas del equipo</h2>${otras.map(filaOtra).join('')}</div>` : ''}`;
+  $('#tr-volver').onclick = volver;
+  const recargar = () => renderTareas(volver);
+  const crear = $('#tr-crear');
+  if(crear) crear.onclick = async () => {
+    const titulo = $('#tr-titulo').value.trim();
+    if(!titulo){ showToast('Escribe qué hay que hacer'); return; }
+    crear.disabled = true;
+    const { error } = await sb.from('tareas').insert({ titulo, detalle: $('#tr-detalle').value.trim(), asignada_a: $('#tr-para').value, fecha_limite: $('#tr-limite').value || null, creada_por: profile.id });
+    if(error){ crear.disabled = false; showToast('No se pudo asignar: ' + error.message); return; }
+    showToast('Tarea asignada');
+    recargar();
+  };
+  document.querySelectorAll('[data-hecha]').forEach(b => {
+    b.onclick = async () => {
+      b.disabled = true;
+      const nuevo = b.getAttribute('data-est') === 'hecha' ? 'pendiente' : 'hecha';
+      const { error } = await sb.from('tareas').update({ estado: nuevo }).eq('id', b.getAttribute('data-hecha'));
+      if(error){ b.disabled = false; showToast('No se pudo actualizar: ' + error.message); return; }
+      recargar();
+    };
+  });
+  document.querySelectorAll('[data-borrar]').forEach(b => {
+    b.onclick = async () => {
+      if(b.dataset.ok !== '1'){ b.dataset.ok = '1'; b.textContent = '¿Seguro?'; setTimeout(() => { if(b.isConnected){ b.dataset.ok = ''; b.textContent = 'Quitar'; } }, 3000); return; }
+      b.disabled = true;
+      const { error } = await sb.from('tareas').delete().eq('id', b.getAttribute('data-borrar'));
+      if(error){ b.disabled = false; showToast('No se pudo quitar: ' + error.message); return; }
+      recargar();
+    };
+  });
+};
+async function badgeTareas(idBoton){
+  try {
+    const { data } = await sb.rpc('tareas_listar');
+    const n = (data || []).filter(t => t.asignada_a === profile.id && t.estado !== 'hecha').length;
+    const el = document.querySelector('#' + idBoton + ' em');
+    if(el) el.textContent = n ? n + ' pendiente' + (n === 1 ? '' : 's') + ' para ti' : 'Sin tareas pendientes para ti';
+  } catch(e){}
+}
+
+/* =====================================================================
+   MÉTRICAS DE LA EMPRESA (maqueta: se conectan los Excel después)
+   ===================================================================== */
+const FUENTES = [
+  { k: 'kpi', ico: '📊', t: 'KPIs de la empresa', sub: 'Planilla general de KPIs', tiles: [['Retención de sede', 'Meta ≥ 85%'], ['Casos pendientes', ''], ['Venta vs. meta', '']] },
+  { k: 'retencion', ico: '🔁', t: 'Retención', sub: 'Dashboard de retención', tiles: [['Retención de sede', 'Meta ≥ 85%'], ['Bajas del mes', ''], ['Alumnos en riesgo', '']] },
+  { k: 'protocolos', ico: '📋', t: 'Protocolos', sub: 'Excel de protocolos', tiles: [['Protocolos al día', 'Meta ≥ 90%'], ['Entrevistas', ''], ['Evaluaciones', ''], ['Planificaciones Wizfit', '']] },
+  { k: 'ventas', ico: '💰', t: 'Ventas', sub: 'Excel de ventas: cuánto llevamos vendido', tiles: [['Venta acumulada', ''], ['Meta del mes', ''], ['Avance vs. meta', '']] },
+  { k: 'leads', ico: '🎯', t: 'Leads y clases de prueba', sub: 'Excel de leads: clases de prueba del día y profesor asignado', tiles: [['Clases de prueba hoy', ''], ['Confirmadas', ''], ['No-show', 'Referencia < 20%']], tabla: true },
+  { k: 'leads_presenciales', ico: '🚶', t: 'Leads presenciales', sub: 'Excel de leads presenciales', tiles: [['Leads del mes', ''], ['Convertidos', '']] },
+  { k: 'liquidos', ico: '🥤', t: 'Venta de líquidos', sub: 'Excel de venta de líquidos', tiles: [['Venta del mes', ''], ['Unidades', '']] },
+  { k: 'map', ico: '🗺️', t: 'App Map', sub: 'Aplicación administrativa de leads presenciales · se evaluará una conexión por API', tiles: [] },
+  { k: 'evo', ico: '🔌', t: 'EVO', sub: 'Conexión directa por API (más adelante)', tiles: [] }
+];
+const tablaEjemplo = () => `<p class="ck-hint" style="margin-top:12px"><b>Clases de prueba de hoy</b> · datos de muestra, no son reales</p>
+  <table class="ck-table"><tr><th>HORA</th><th>LEAD</th><th>PROFESOR ASIGNADO</th><th>ESTADO</th></tr>
+  <tr><td>10:00</td><td>Lead de ejemplo 1</td><td>Profesor de ejemplo</td><td>Confirmada</td></tr>
+  <tr><td>18:30</td><td>Lead de ejemplo 2</td><td>Profesora de ejemplo</td><td>Por confirmar</td></tr></table>`;
+window.renderMetricas = async function(volver, claves, titulo){
+  claves = claves || FUENTES.map(f => f.k);
+  titulo = titulo || 'Métricas de la empresa';
+  root().innerHTML = `<div class="loading">Cargando...</div>`;
+  const m = await cargarConexiones();
+  if(!m){ root().innerHTML = `<div class="error-banner">No se pudieron cargar los paneles.</div><button class="btn-ghost" id="mt-err">Volver</button>`; $('#mt-err').onclick = volver; return; }
+  const edit = esGestor();
+  const fuentes = FUENTES.filter(f => claves.includes(f.k));
+  root().innerHTML = `${cabecera(titulo, 'mt-volver')}
+    <div class="ck-banner" style="background:rgba(255,199,44,.1);border:1px solid var(--blue)"><b>MAQUETA.</b> Así se verá cada panel. Los números aparecen como «—» hasta conectar el Excel; mientras tanto puedes dejar el enlace para abrirlo directo.</div>
+    ${fuentes.map(f => { const x = m[f.k] || { url: '', nota: '' }; const ok = urlSegura(x.url);
+      return `<div class="card"><div class="ck-sec-h"><span style="font-size:22px">${f.ico}</span><div style="flex:1"><h2 style="margin:0">${esc(f.t)}</h2><p class="ck-hint" style="margin:2px 0 0">${esc(f.sub)}</p></div><span class="ck-chip">Sin conectar</span></div>
+        ${f.tiles.length ? `<div class="mt-grid">${f.tiles.map(t => `<div class="mt-tile"><b>—</b><small>${esc(t[0])}</small><em>${esc(t[1])}</em></div>`).join('')}</div>` : ''}
+        ${f.tabla ? tablaEjemplo() : ''}
+        ${ok ? `<a class="btn" href="${esc(ok)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;margin-top:10px">Abrir enlace</a>` : '<p class="ck-hint" style="margin-top:10px">Aún sin enlace.</p>'}
+        ${edit ? `<label style="margin-top:12px">Enlace</label><input type="url" id="cx-url-${f.k}" value="${esc(x.url)}" placeholder="https://..."><label>Nota</label><input type="text" id="cx-nota-${f.k}" value="${esc(x.nota)}"><button class="btn-sm" data-guardar="${f.k}">Guardar</button>` : ''}
+      </div>`; }).join('')}`;
+  $('#mt-volver').onclick = volver;
+  document.querySelectorAll('[data-guardar]').forEach(b => {
+    b.onclick = async () => {
+      const k = b.getAttribute('data-guardar');
+      const url = $('#cx-url-' + k).value.trim();
+      if(url && !urlSegura(url)){ showToast('El enlace no es válido (debe empezar con https://)'); return; }
+      b.disabled = true;
+      const { error } = await sb.from('conexiones_externas').update({ url, nota: $('#cx-nota-' + k).value.trim(), updated_at: new Date().toISOString() }).eq('clave', k);
+      b.disabled = false;
+      if(error){ showToast('No se pudo guardar: ' + error.message); return; }
+      showToast('Guardado');
+      renderMetricas(volver, claves, titulo);
+    };
+  });
+};
+
+// Frase para la imagen que el alumno comparte en redes: "junto a mi profesor/a ..."
+window.textoJuntoProfesor = async function(){
+  try {
+    if(!profile || profile.role !== 'alumno' || !profile.profesor_id) return '';
+    let c = window.__profeCompartir;
+    if(!c || c.id !== profile.profesor_id){
+      const { data } = await sb.rpc('perfil_profesor', { p_id: profile.profesor_id });
+      const p = Array.isArray(data) ? data[0] : data;
+      if(!p || !p.nombre) return '';
+      const pp = (p.perfil_pro && typeof p.perfil_pro === 'object') ? p.perfil_pro : {};
+      const nombre = String(pp.nombre_compartir || String(p.nombre).trim().split(/\s+/)[0]).trim();
+      let trat = pp.tratamiento;
+      if(trat !== 'profesor' && trat !== 'profesora') trat = /a$/i.test(nombre.split(/\s+/)[0]) ? 'profesora' : 'profesor';
+      c = window.__profeCompartir = { id: p.id, nombre, trat };
+    }
+    return ('JUNTO A MI ' + c.trat + ' ' + c.nombre).toUpperCase();
+  } catch(e){ return ''; }
+};
+
 
 window.addEventListener('beforeunload', (e) => { if(K.dirty && !K.ro){ e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden' && K.dirty && !K.ro) ckFlush(); });
