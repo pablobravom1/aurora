@@ -1482,7 +1482,7 @@ async function guardarPlantilla(){
 // ---------- Elegir alumnos y asignar ----------
 async function cargarMisAlumnosParaAsignar(){
   let q = sb.from('profiles').select('id, nombre, avatar_key, foto_perfil_url, profesor_id').eq('role', 'alumno').order('nombre');
-  if(profile.role !== 'super_admin') q = q.eq('profesor_id', profile.id);
+  if(!esGestor()) q = q.eq('profesor_id', profile.id);
   const { data: alumnos } = await q;
   const ids = (alumnos || []).map(a => a.id);
   let activas = [];
@@ -1644,7 +1644,7 @@ function perfilProDe(p){
 function perfilProCardHtml(p, alumnosCount, opciones){
   const pp = perfilProDe(p);
   const op = opciones || {};
-  const rol = p.role === 'super_admin' ? 'Profesor · administrador' : 'Profesor';
+  const rol = rolEtiqueta(p);
   return `
     <section class="pp-card" style="--pp:${pp.color}">
       <div class="pp-portada" style="${pp.portada_url ? `background-image:url('${escapeHtml(pp.portada_url)}')` : ''}">${pp.portada_url ? '' : '<span class="pp-portada-marca">STC APP</span>'}</div>
@@ -1892,7 +1892,7 @@ function renderRoutineDays(dias){
 
 // ---------- ARRANQUE ----------
 function esVistaCoach(role){
-  return role === 'coach' || role === 'profesor' || role === 'super_admin';
+  return role === 'coach' || role === 'profesor' || role === 'super_admin' || role === 'responsable_sede' || role === 'loc';
 }
 
 async function boot(){
@@ -4999,8 +4999,9 @@ function normalizarTexto(txt){
 
 async function renderCoachHome(){
   cleanupSocialRealtime();
+  if(esLoc()) return renderLocHome();
   root().innerHTML = `<div class="loading">Cargando alumnos...</div>`;
-  const esSuperAdmin = profile.role === 'super_admin';
+  const esSuperAdmin = esGestor();
 
   const [{ data: alumnos, error }, profesoresRes] = await Promise.all([
     sb.from('profiles').select('*').eq('role', 'alumno').order('nombre'),
@@ -5122,6 +5123,7 @@ async function renderCoachHome(){
   const btnAlertasEntrenamiento = document.getElementById('btn-alertas-entrenamiento');
   if(btnAlertasEntrenamiento) btnAlertasEntrenamiento.onclick = renderNotificacionesEntrenamiento;
   abrirResumenPendiente();
+  rolesMontarHome();
 
   if(esSuperAdmin){
     wireToggle('btn-toggle-profesores', 'profesores-holder', () => {
@@ -5704,7 +5706,7 @@ async function renderCoachAlumnoDetail(alumnoId){
   // Modo observador: un profesor que no es el asignado a este alumno puede entrar a mirar
   // (por ejemplo si el profe titular faltó), pero no puede crear, editar ni eliminar nada.
   const soloObservador = profile.role === 'profesor' && alumno.profesor_id !== profile.id;
-  const esSuperAdmin = profile.role === 'super_admin';
+  const esSuperAdmin = esGestor();
 
   root().innerHTML = `
     <div class="header-actions">
@@ -5800,7 +5802,7 @@ async function renderCoachAlumnoDetail(alumnoId){
     </button>
     <div class="hidden" id="sesiones-list"></div>
 
-    ${profile.role === 'super_admin' && alumno.role === 'alumno' ? `
+    ${esGestor() && alumno.role === 'alumno' ? `
       <button class="btn-sm btn-clave-temporal" id="btn-clave-temporal" style="margin-top:16px; width:100%; justify-content:center;">🔑 Generar clave temporal</button>
     ` : ''}
     ${profile.role === 'super_admin' ? `
