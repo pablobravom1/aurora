@@ -1,8 +1,8 @@
 // STC App — instalación, caché y notificaciones push.
 // No cachea datos de Supabase, solo el cascarón de la aplicación.
-const CACHE_NAME = 'stc-v2';
+const CACHE_NAME = 'stc-v3';
 const APP_SHELL = [
-  './', './index.html', './styles.css', './roles.js', './app.js', './config.js', './kilo.js', './manifest.json', './avatar-sprite-v2.png',
+  './', './index.html', './styles.css', './roles.js', './app.js', './config.js', './kilo.js', './manifest.json', './logo.png', './avatar-sprite-v2.png',
   './avatar-original-01.webp', './avatar-original-02.webp', './avatar-original-03.webp', './avatar-original-04.webp', './avatar-original-05.webp',
   './avatar-original-06.webp', './avatar-original-07.webp', './avatar-original-08.webp', './avatar-original-09.webp', './avatar-original-10.webp'
 ];
