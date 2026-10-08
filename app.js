@@ -2301,6 +2301,12 @@ async function renderAlumnoHome(){
     </button>
     <div class="hidden" id="mediciones-holder"></div>
 
+    <button class="btn-toggle-rutina section-intake" id="btn-toggle-entrevista-inicial">
+      <span class="toggle-label">${ICONS.mic} Entrevista inicial</span>
+      ${toggleStateHtml()}
+    </button>
+    <div class="hidden" id="entrevista-inicial-wrap"><div id="entrevista-inicial-holder"></div></div>
+
     <div id="ficha-aviso-holder"></div>
     <div id="ficha-completada-holder"></div>
     <div id="entrevista-objetivos-aviso-holder"></div>
@@ -2323,6 +2329,9 @@ async function renderAlumnoHome(){
   if(teacherChat) document.getElementById('btn-ver-perfil-profe').onclick = () => renderPerfilProfesor(teacherChat.id, renderAlumnoHome);
   subscribeSocialNotifications(renderAlumnoHome);
   document.getElementById('btn-nueva-sesion').onclick = () => iniciarNuevaSesion(rutina);
+  wireToggle('btn-toggle-entrevista-inicial', 'entrevista-inicial-wrap', () => {
+    renderEntrevista('entrevista-inicial-holder', profile.id, profile.entrevista_audio_url, profile.entrevista_fecha, true, profile.entrevista_audio_duracion_seg, profile.entrevista_excepcion);
+  });
   mostrarFichaAlumno();
   mostrarEntrevistaObjetivosAlumno();
   cargarFeedbackAlumno();
@@ -5774,19 +5783,16 @@ async function renderCoachAlumnoDetail(alumnoId){
     </button>
     <div class="hidden" id="mediciones-holder"></div>
 
-    <button class="btn-toggle-rutina section-intake" id="btn-toggle-ficha">
-      <span class="toggle-label">${ICONS.clipboard} Ficha de ingreso</span>
+    <button class="btn-toggle-rutina section-intake" id="btn-toggle-entrevista-inicial">
+      <span class="toggle-label">${ICONS.clipboard} Entrevista inicial</span>
       ${toggleStateHtml()}
     </button>
-    <div class="hidden ficha-wrap" id="ficha-wrap">
+    <div class="hidden ficha-wrap" id="entrevista-inicial-wrap">
+      <div class="sub" style="margin:6px 0;"><b>Audio de la entrevista</b> · grábala aquí mismo o sube la nota de voz</div>
+      <div id="entrevista-audio-holder"></div>
+      <div class="sub" style="margin:16px 0 6px;"><b>Ficha de ingreso</b></div>
       <div id="ficha-holder"></div>
-    </div>
-
-    <button class="btn-toggle-rutina section-goals" id="btn-toggle-entrevista-objetivos">
-      <span class="toggle-label">${ICONS.trending} Entrevista de objetivos</span>
-      ${toggleStateHtml()}
-    </button>
-    <div class="hidden ficha-wrap" id="entrevista-objetivos-wrap">
+      <div class="sub" style="margin:16px 0 6px;"><b>Objetivos</b></div>
       <div id="entrevista-objetivos-holder"></div>
     </div>
 
@@ -5857,18 +5863,13 @@ async function renderCoachAlumnoDetail(alumnoId){
     });
   }
   {
-    let fichaInicializada = false;
-    wireToggle('btn-toggle-ficha', 'ficha-wrap', () => {
-      if(!fichaInicializada){ renderFichaProfe('ficha-holder', alumnoId, soloObservador); fichaInicializada = true; }
-    });
-  }
-  {
-    let entrevistaObjetivosInicializada = false;
-    wireToggle('btn-toggle-entrevista-objetivos', 'entrevista-objetivos-wrap', () => {
-      if(!entrevistaObjetivosInicializada){
-        renderEntrevistaObjetivosProfe('entrevista-objetivos-holder', alumnoId, soloObservador);
-        entrevistaObjetivosInicializada = true;
-      }
+    let entrevistaInicialLista = false;
+    wireToggle('btn-toggle-entrevista-inicial', 'entrevista-inicial-wrap', () => {
+      if(entrevistaInicialLista) return;
+      entrevistaInicialLista = true;
+      renderEntrevista('entrevista-audio-holder', alumnoId, alumno.entrevista_audio_url, alumno.entrevista_fecha, soloObservador, alumno.entrevista_audio_duracion_seg, alumno.entrevista_excepcion);
+      renderFichaProfe('ficha-holder', alumnoId, soloObservador);
+      renderEntrevistaObjetivosProfe('entrevista-objetivos-holder', alumnoId, soloObservador);
     });
   }
   wireToggle('btn-toggle-calendario', 'calendar-holder');
