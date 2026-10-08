@@ -1628,7 +1628,7 @@ async function elegirPlantillaParaAlumno(alumno){
 // ============================================================
 // PERFIL DEL PROFESOR (lo ven sus alumnos)
 // ============================================================
-const PERFIL_PRO_COLORES = ['#46C8FF', '#8B5CF6', '#2DD4BF', '#CBFF45', '#FF8A3D', '#FF5CB8'];
+const PERFIL_PRO_COLORES = ['#FFD446', '#FFD753', '#FFC91A', '#FFC72C', '#FF8A3D', '#FFA64D'];
 const PERFIL_PRO_ESPECIALIDADES = ['Fuerza', 'Hipertrofia', 'Funcional', 'Pérdida de grasa', 'Movilidad', 'Rehabilitación', 'Rendimiento deportivo', 'Adulto mayor', 'Principiantes', 'Entrenamiento en casa'];
 const PERFIL_PRO_ICONOS = { 'Fuerza': '🏋️', 'Hipertrofia': '📊', 'Funcional': '⚡', 'Pérdida de grasa': '🔥', 'Movilidad': '🧘', 'Rehabilitación': '🩹', 'Rendimiento deportivo': '🏃', 'Adulto mayor': '🌿', 'Principiantes': '🌱', 'Entrenamiento en casa': '🏠' };
 
@@ -2677,8 +2677,8 @@ function mostrarRutinaEnviada(nombreAlumno, actualizada){
       <div class="rutina-enviada-escena">
         <div class="rutina-enviada-kilo">${window.UCKilo ? window.UCKilo.svg('anima', 78) : ''}</div>
         <svg class="rutina-enviada-sobre" viewBox="0 0 64 48" aria-hidden="true">
-          <rect x="3" y="5" width="58" height="38" rx="6" fill="#CBFF45" stroke="#07121C" stroke-width="3"/>
-          <path d="M5 9 L32 29 L59 9" fill="none" stroke="#07121C" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="3" y="5" width="58" height="38" rx="6" fill="#FFC72C" stroke="#111111" stroke-width="3"/>
+          <path d="M5 9 L32 29 L59 9" fill="none" stroke="#111111" stroke-width="3" stroke-linejoin="round"/>
         </svg>
         <div class="rutina-enviada-check">✓</div>
       </div>
@@ -2712,7 +2712,7 @@ function avisarRutinaNueva(rutina){
   capa.innerHTML = `
     <div class="rutina-nueva-flip">
       <div class="rutina-nueva-cara rutina-nueva-dorso">
-        <svg viewBox="0 0 64 48" aria-hidden="true"><rect x="3" y="5" width="58" height="38" rx="6" fill="#CBFF45" stroke="#07121C" stroke-width="3"/><path d="M5 9 L32 29 L59 9" fill="none" stroke="#07121C" stroke-width="3" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 64 48" aria-hidden="true"><rect x="3" y="5" width="58" height="38" rx="6" fill="#FFC72C" stroke="#111111" stroke-width="3"/><path d="M5 9 L32 29 L59 9" fill="none" stroke="#111111" stroke-width="3" stroke-linejoin="round"/></svg>
       </div>
       <div class="rutina-nueva-cara logro-celebracion-card rutina-nueva-frente">
         <div class="logro-celebracion-kilo">${window.UCKilo ? window.UCKilo.svg('anima', 90) : ''}</div>
@@ -3698,10 +3698,10 @@ function setupProgresoChart(sesiones){
     empty.classList.add('hidden');
     const ctx = canvas.getContext('2d');
     const areaFill = ctx.createLinearGradient(0, 0, 0, 230);
-    areaFill.addColorStop(0, 'rgba(113,215,255,0.36)');
-    areaFill.addColorStop(0.55, 'rgba(155,123,255,0.15)');
-    areaFill.addColorStop(1, 'rgba(155,123,255,0)');
-    const pointPalette = ['#71D7FF', '#9B7BFF', '#5EE3B6', '#FFD166'];
+    areaFill.addColorStop(0, 'rgba(255,222,112,0.36)');
+    areaFill.addColorStop(0.55, 'rgba(255,222,112,0.15)');
+    areaFill.addColorStop(1, 'rgba(255,222,112,0)');
+    const pointPalette = ['#FFDE70', '#FFDE70', '#5EE3B6', '#FFD166'];
     progresoChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -3709,7 +3709,7 @@ function setupProgresoChart(sesiones){
         datasets: [{
           label: 'Peso máximo (kg)',
           data: datos.registros.map(p => p.peso),
-          borderColor: '#71D7FF',
+          borderColor: '#FFDE70',
           backgroundColor: areaFill,
           borderWidth: 3,
           tension: 0.38,
@@ -3717,7 +3717,7 @@ function setupProgresoChart(sesiones){
           pointRadius: 4,
           pointHoverRadius: 6,
           pointBorderWidth: 2,
-          pointBorderColor: '#09141E',
+          pointBorderColor: '#131313',
           pointBackgroundColor: datos.registros.map((_, index) => pointPalette[index % pointPalette.length])
         }]
       },
@@ -3726,11 +3726,11 @@ function setupProgresoChart(sesiones){
         interaction: { intersect:false, mode:'index' },
         plugins: {
           legend: { display:false },
-          tooltip: { displayColors:false, backgroundColor:'#142A39', titleColor:'#F7FAFF', bodyColor:'#B9C8D4', borderColor:'rgba(113,215,255,.35)', borderWidth:1, padding:12, cornerRadius:10 }
+          tooltip: { displayColors:false, backgroundColor:'#252525', titleColor:'#FBFBFB', bodyColor:'#BDBDBD', borderColor:'rgba(255,222,112,.35)', borderWidth:1, padding:12, cornerRadius:10 }
         },
         scales: {
-          x: { ticks:{ color:'#91A7B7', font:{ size:11 } }, grid:{ display:false }, border:{ display:false } },
-          y: { beginAtZero:true, ticks:{ color:'#91A7B7', font:{ size:11 }, padding:8 }, grid:{ color:'rgba(145,167,183,.13)' }, border:{ display:false } }
+          x: { ticks:{ color:'#9C9C9C', font:{ size:11 } }, grid:{ display:false }, border:{ display:false } },
+          y: { beginAtZero:true, ticks:{ color:'#9C9C9C', font:{ size:11 }, padding:8 }, grid:{ color:'rgba(156,156,156,.13)' }, border:{ display:false } }
         }
       }
     });
@@ -4578,13 +4578,13 @@ async function generarImagenCompartir(r){
 
   // Fondo
   let g = ctx.createLinearGradient(0, 0, W * 0.35, H);
-  g.addColorStop(0, '#183445'); g.addColorStop(0.7, '#07121C'); g.addColorStop(1, '#07121C');
+  g.addColorStop(0, '#2C2C2C'); g.addColorStop(0.7, '#111111'); g.addColorStop(1, '#111111');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   g = ctx.createRadialGradient(cx, 600, 0, cx, 600, 640);
-  g.addColorStop(0, 'rgba(155,123,255,.48)'); g.addColorStop(1, 'rgba(155,123,255,0)');
+  g.addColorStop(0, 'rgba(255,222,112,.48)'); g.addColorStop(1, 'rgba(255,222,112,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   g = ctx.createRadialGradient(cx, H, 0, cx, H, 620);
-  g.addColorStop(0, 'rgba(203,255,69,.20)'); g.addColorStop(1, 'rgba(203,255,69,0)');
+  g.addColorStop(0, 'rgba(255,199,44,.20)'); g.addColorStop(1, 'rgba(255,199,44,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
@@ -4592,14 +4592,14 @@ async function generarImagenCompartir(r){
   // Fecha
   const [yy, mm, dd] = String(r.fecha).split('-').map(Number);
   const f = new Date(yy, (mm || 1) - 1, dd || 1);
-  ctx.font = '500 28px "IBM Plex Mono", monospace'; ctx.fillStyle = '#71D7FF';
+  ctx.font = '500 28px "IBM Plex Mono", monospace'; ctx.fillStyle = '#FFDE70';
   compartirTextoEspaciado(ctx, `${COMPARTIR_DIAS[f.getDay()]} ${f.getDate()} · ${COMPARTIR_MESES[f.getMonth()]}`.toUpperCase(), cx, 250, 7);
 
   // Título
-  ctx.fillStyle = '#F7FAFF';
+  ctx.fillStyle = '#FBFBFB';
   compartirAjustar(ctx, 'ENTRENAMIENTO', '700 {t}px Oswald, sans-serif', 124, 920);
   ctx.fillText('ENTRENAMIENTO', cx, 380);
-  ctx.fillStyle = '#CBFF45';
+  ctx.fillStyle = '#FFC72C';
   compartirAjustar(ctx, 'COMPLETADO', '700 {t}px Oswald, sans-serif', 124, 920);
   ctx.fillText('COMPLETADO', cx, 500);
 
@@ -4619,16 +4619,16 @@ async function generarImagenCompartir(r){
 
   // Número principal: volumen (o series si fue sin peso)
   const conPeso = r.volumen > 0;
-  ctx.fillStyle = '#CBFF45';
+  ctx.fillStyle = '#FFC72C';
   ctx.font = '700 190px Oswald, sans-serif';
   ctx.fillText(conPeso ? r.volumen.toLocaleString('es-CL') : String(r.series), cx, 1100);
-  ctx.font = '500 30px "IBM Plex Mono", monospace'; ctx.fillStyle = '#A7BAC7';
+  ctx.font = '500 30px "IBM Plex Mono", monospace'; ctx.fillStyle = '#AEAEAE';
   compartirTextoEspaciado(ctx, conPeso ? 'KG LEVANTADOS HOY' : (r.series === 1 ? 'SERIE COMPLETADA HOY' : 'SERIES COMPLETADAS HOY'), cx, 1152, 7);
 
   // Qué entrené (grupos musculares)
   const grupos = r.gruposMusculares || [];
   if(grupos.length){
-    ctx.font = '500 26px "IBM Plex Mono", monospace'; ctx.fillStyle = '#A7BAC7';
+    ctx.font = '500 26px "IBM Plex Mono", monospace'; ctx.fillStyle = '#AEAEAE';
     compartirTextoEspaciado(ctx, 'HOY ENTRENÉ', cx, 1258, 7);
     const partes = grupos.map(t => t.toUpperCase());
     const tam = compartirAjustar(ctx, partes.join('  ·  '), '700 {t}px Oswald, sans-serif', 64, 900);
@@ -4638,8 +4638,8 @@ async function generarImagenCompartir(r){
     let x = cx - total / 2;
     ctx.textAlign = 'left';
     partes.forEach((p, i) => {
-      ctx.fillStyle = '#F7FAFF'; ctx.fillText(p, x, 1335); x += ctx.measureText(p).width;
-      if(i < partes.length - 1){ ctx.fillStyle = '#71D7FF'; ctx.fillText(sep, x, 1335); x += ctx.measureText(sep).width; }
+      ctx.fillStyle = '#FBFBFB'; ctx.fillText(p, x, 1335); x += ctx.measureText(p).width;
+      if(i < partes.length - 1){ ctx.fillStyle = '#FFDE70'; ctx.fillText(sep, x, 1335); x += ctx.measureText(sep).width; }
     });
     ctx.textAlign = 'center';
   }
@@ -4654,11 +4654,11 @@ async function generarImagenCompartir(r){
   cajas.forEach((c, i) => {
     const x = bx + i * (bw + 20);
     compartirCajaRedonda(ctx, x, by, bw, bh, 28);
-    ctx.fillStyle = c.pr ? 'rgba(255,209,102,.10)' : 'rgba(7,18,28,.55)'; ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = c.pr ? 'rgba(255,209,102,.6)' : 'rgba(155,189,211,.25)'; ctx.stroke();
-    ctx.fillStyle = c.pr ? '#FFD166' : '#F7FAFF';
+    ctx.fillStyle = c.pr ? 'rgba(255,209,102,.10)' : 'rgba(17,17,17,.55)'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = c.pr ? 'rgba(255,209,102,.6)' : 'rgba(255,221,111,.25)'; ctx.stroke();
+    ctx.fillStyle = c.pr ? '#FFD166' : '#FBFBFB';
     ctx.font = '700 76px Oswald, sans-serif'; ctx.fillText(c.n, x + bw / 2, by + 96);
-    ctx.fillStyle = '#A7BAC7'; ctx.font = '500 22px "IBM Plex Mono", monospace';
+    ctx.fillStyle = '#AEAEAE'; ctx.font = '500 22px "IBM Plex Mono", monospace';
     compartirTextoEspaciado(ctx, c.t, x + bw / 2, by + 144, 3);
   });
 
@@ -4666,16 +4666,16 @@ async function generarImagenCompartir(r){
   ctx.font = '700 40px Oswald, sans-serif';
   const anchoMarca = ctx.measureText(COMPARTIR_MARCA).width + 20;
   const mx = cx - (58 + 18 + anchoMarca) / 2, my = 1640;
-  ctx.fillStyle = '#CBFF45';
+  ctx.fillStyle = '#FFC72C';
   ctx.beginPath();
   ctx.moveTo(mx, my + 11.6); ctx.lineTo(mx + 11.6, my); ctx.lineTo(mx + 58, my); ctx.lineTo(mx + 58, my + 46.4);
   ctx.lineTo(mx + 46.4, my + 58); ctx.lineTo(mx, my + 58); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#07121C'; ctx.font = '700 20px Oswald, sans-serif'; ctx.fillText('UC', mx + 29, my + 37);
+  ctx.fillStyle = '#111111'; ctx.font = '700 20px Oswald, sans-serif'; ctx.fillText('UC', mx + 29, my + 37);
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#F7FAFF'; ctx.font = '700 40px Oswald, sans-serif';
+  ctx.fillStyle = '#FBFBFB'; ctx.font = '700 40px Oswald, sans-serif';
   let lx = mx + 58 + 18;
   [...COMPARTIR_MARCA].forEach(l => { ctx.fillText(l, lx, my + 34); lx += ctx.measureText(l).width + 2.5; });
-  ctx.fillStyle = '#A7BAC7'; ctx.font = '500 19px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#AEAEAE'; ctx.font = '500 19px "IBM Plex Mono", monospace';
   lx = mx + 58 + 18;
   [...COMPARTIR_SUBMARCA].forEach(l => { ctx.fillText(l, lx, my + 60); lx += ctx.measureText(l).width + 3.5; });
   ctx.textAlign = 'center';
@@ -4775,7 +4775,7 @@ function renderResumenSesion(r){
   descansoDetener();
   const kilo = window.UCKilo ? window.UCKilo.svg('celebra', 120) : '';
   let confeti = '';
-  const colores = ['#CBFF45', '#71D7FF', '#9B7BFF', '#5EE3B6', '#FFD166'];
+  const colores = ['#FFC72C', '#FFDE70', '#FFDE70', '#5EE3B6', '#FFD166'];
   for(let i = 0; i < 26; i++){
     confeti += `<span class="resumen-confeti" style="left:${Math.round(Math.random()*96)+2}%; background:${colores[i % 5]}; --d:${(Math.random()*0.6).toFixed(2)}s; --r:${Math.round(Math.random()*540 - 270)}deg"></span>`;
   }
@@ -5402,7 +5402,7 @@ function renderListaAlumnosProfesor(holderId, profesor, alumnosDelProfesor){
 function pctColorProtocolo(pct){
   if(pct === null || pct === undefined) return '#9CA39A';
   if(pct >= 90) return '#4CAF6D';
-  if(pct >= 85) return '#D6FF3F';
+  if(pct >= 85) return '#FFC72C';
   return '#E5484D';
 }
 
@@ -5637,7 +5637,7 @@ async function descargarPDFEstadoProtocolos(profesores, alumnos){
       { text: 'PROFESOR', align: 'left', bold: true },
       ...statsPorProfesor.map(s => ({ text: primerNombre(s.profesor.nombre), bold: true })),
       { text: 'TOTAL', bold: true }
-    ], { rowH: 8, bgColor: '#0C100D', textColor: '#D6FF3F' });
+    ], { rowH: 8, bgColor: '#0C100D', textColor: '#FFC72C' });
 
     y = filaGrid(doc, marginX, y, colWidths, [
       { text: 'Alumnos', align: 'left', bold: true },
