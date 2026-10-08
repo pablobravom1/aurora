@@ -1745,7 +1745,7 @@ async function montarPerfilProfesional(holderId, abrirEdicion){
     document.getElementById('pp-cancelar').onclick = () => pintar(false);
     document.getElementById('pp-guardar').onclick = async (ev) => {
       ev.target.disabled = true;
-      const perfil_pro = { bio: document.getElementById('pp-bio').value.trim().slice(0, 400), especialidades: estado.especialidades, anos: estado.anos, portada_url: estado.portada_url || null, color: estado.color };
+      const perfil_pro = { ...((profile.perfil_pro && typeof profile.perfil_pro === 'object') ? profile.perfil_pro : {}), bio: document.getElementById('pp-bio').value.trim().slice(0, 400), especialidades: estado.especialidades, anos: estado.anos, portada_url: estado.portada_url || null, color: estado.color };
       const { data: nuevo, error } = await sb.from('profiles').update({ perfil_pro }).eq('id', profile.id).select('*').single();
       if(error){ ev.target.disabled = false; showToast(/perfil_pro/i.test(error.message || '') ? 'El perfil profesional se está activando, intenta en unos minutos' : 'No se pudo guardar tu perfil'); return; }
       profile = nuevo;
@@ -4649,7 +4649,7 @@ async function generarImagenCompartir(r){
   ctx.beginPath();
   ctx.moveTo(mx, my + 11.6); ctx.lineTo(mx + 11.6, my); ctx.lineTo(mx + 58, my); ctx.lineTo(mx + 58, my + 46.4);
   ctx.lineTo(mx + 46.4, my + 58); ctx.lineTo(mx, my + 58); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#111111'; ctx.font = '700 20px Oswald, sans-serif'; ctx.fillText('UC', mx + 29, my + 37);
+  ctx.fillStyle = '#111111'; ctx.font = '700 19px Oswald, sans-serif'; ctx.fillText('STC', mx + 29, my + 37);
   ctx.textAlign = 'left';
   ctx.fillStyle = '#FBFBFB'; ctx.font = '700 40px Oswald, sans-serif';
   let lx = mx + 58 + 18;
@@ -4658,6 +4658,15 @@ async function generarImagenCompartir(r){
   lx = mx + 58 + 18;
   [...COMPARTIR_SUBMARCA].forEach(l => { ctx.fillText(l, lx, my + 60); lx += ctx.measureText(l).width + 3.5; });
   ctx.textAlign = 'center';
+
+  // "Junto a mi profesor/a ..." (solo en la imagen del alumno)
+  const junto = (typeof textoJuntoProfesor === 'function') ? await textoJuntoProfesor() : '';
+  if(junto){
+    ctx.textAlign = 'center'; ctx.fillStyle = '#FFC72C';
+    const tamJ = compartirAjustar(ctx, junto, '700 {t}px Oswald, sans-serif', 44, 900);
+    ctx.font = '700 ' + tamJ + 'px Oswald, sans-serif';
+    ctx.fillText(junto, cx, 1810);
+  }
 
   return await new Promise(ok => canvas.toBlob(ok, 'image/png'));
 }
