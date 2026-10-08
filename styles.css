@@ -1756,3 +1756,16 @@ body.pl-abierto{overflow:hidden}
 .mark{width:42px;height:42px}
 .splash-mark{width:112px;height:112px}
 .topbar{position:sticky;top:0;z-index:40;background:var(--ink,#0A0A0A);margin-left:-18px;margin-right:-18px;padding:8px 20px 12px}
+
+/* STC · negro neutro, amarillo solo como acento + jerarquía */
+:root{--ink:#0A0A0A;--graphite:#121212;--surface:#181818;--surface-2:#222222;--chalk:#F5F5F5;--chalk-dim:#A8A8A8;--line:#2E2E2E;--radius-card:16px}
+body{background:radial-gradient(circle at 50% -20%,#232323 0%,var(--ink) 45%)}
+.rl-nav small,.coach-home-titulo small{color:#A8A8A8}
+.rl-nav .rl-ico{background:rgba(255,255,0,.10)}
+.rl-group-title{color:#A8A8A8;letter-spacing:.2em;margin:26px 0 10px}
+.card{padding:20px;margin-bottom:18px}
+h2{font-size:19px;letter-spacing:.03em}
+label{font-size:10.5px;letter-spacing:.12em}
+.stat-tile .num{font-size:30px}
+.mt-tile b{font-size:26px}
+.coach-home-titulo b{font-size:26px}
