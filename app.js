@@ -435,27 +435,37 @@ function formatDate(iso){
 
 // ---------- TIPO DE SERIE / LADO (drop set, rest-pause, forzada al fallo, unilateral/bilateral) ----------
 // Campos opcionales y aditivos: no reemplazan nada de lo que ya existía (reps/peso/nota).
-const TIPO_SERIE_LABELS = { drop_set: 'Drop set', rest_pause: 'Rest-pause', forzada: 'Forzada al fallo' };
+const TIPO_SERIE_LABELS = { drop_set: 'Drop set', rest_pause: 'Rest-pause', forzada: 'Forzada al fallo', bi_serie: 'Bi-serie', super_serie: 'Super serie' };
 const LADO_LABELS = { unilateral: 'Unilateral', bilateral: 'Bilateral', peso_por_lado: 'Peso por lado' };
-function selectTipoSerieHtml(id, valorActual, onchangeExpr){
+// Selector tipo "chips" (botones) en lugar del menú nativo del teléfono.
+// Mantiene un <input type="hidden" id=...> para que el resto del código lea .value igual que antes.
+function chipSelectHtml(id, etiqueta, opciones, valorActual, onchangeExpr, ayuda){
   const v = valorActual || '';
   const onchange = onchangeExpr ? ` onchange="${onchangeExpr.replace(/"/g,'&quot;')}"` : '';
-  return `<select id="${id}"${onchange}>
-    <option value=""${v===''?' selected':''}>Tipo de serie (opcional)</option>
-    <option value="drop_set"${v==='drop_set'?' selected':''}>Drop set</option>
-    <option value="rest_pause"${v==='rest_pause'?' selected':''}>Rest-pause</option>
-    <option value="forzada"${v==='forzada'?' selected':''}>Forzada al fallo</option>
-  </select>`;
+  const chips = opciones.map(([val, txt]) => `<button type="button" class="chip${v === val ? ' on' : ''}" data-v="${val}" onclick="chipSelPick(this)">${txt}</button>`).join('');
+  return `<div class="chip-sel"><span class="chip-lab">${etiqueta}</span><input type="hidden" id="${id}" value="${v}"${onchange}><div class="chips">${chips}</div>${ayuda ? `<span class="chip-ayuda" data-ayuda-de="${id}" data-vals="${ayuda.vals}"${ayuda.vals.split(',').includes(v) ? '' : ' hidden'}>${ayuda.txt}</span>` : ''}</div>`;
+}
+function chipSelPick(btn){
+  const wrap = btn.closest('.chip-sel');
+  const inp = wrap.querySelector('input[type=hidden]');
+  const val = btn.dataset.v;
+  const nuevo = (inp.value === val && val !== '') ? '' : val;
+  inp.value = nuevo;
+  wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.v === nuevo));
+  const ay = wrap.querySelector('.chip-ayuda');
+  if(ay) ay.hidden = !ay.dataset.vals.split(',').includes(nuevo);
+  inp.dispatchEvent(new Event('change', { bubbles: true }));
+  if(window.UCKilo && window.UCKilo.vibrar) window.UCKilo.vibrar(6);
+}
+function selectTipoSerieHtml(id, valorActual, onchangeExpr){
+  return chipSelectHtml(id, 'TIPO DE SERIE', [
+    ['', 'Normal'], ['drop_set', 'Drop set'], ['rest_pause', 'Rest-pause'], ['forzada', 'Forzada al fallo'], ['bi_serie', 'Bi-serie'], ['super_serie', 'Super serie']
+  ], valorActual, onchangeExpr, { vals: 'bi_serie,super_serie', txt: 'Marca con el mismo tipo los dos ejercicios que van juntos, uno después del otro.' });
 }
 function selectLadoHtml(id, valorActual, onchangeExpr){
-  const v = valorActual || '';
-  const onchange = onchangeExpr ? ` onchange="${onchangeExpr.replace(/"/g,'&quot;')}"` : '';
-  return `<select id="${id}"${onchange}>
-    <option value=""${v===''?' selected':''}>Lado (opcional)</option>
-    <option value="unilateral"${v==='unilateral'?' selected':''}>Unilateral</option>
-    <option value="bilateral"${v==='bilateral'?' selected':''}>Bilateral</option>
-    <option value="peso_por_lado"${v==='peso_por_lado'?' selected':''}>Peso por lado</option>
-  </select>`;
+  return chipSelectHtml(id, 'LADO', [
+    ['', 'No aplica'], ['unilateral', 'Unilateral'], ['bilateral', 'Bilateral'], ['peso_por_lado', 'Peso por lado']
+  ], valorActual, onchangeExpr);
 }
 function renderTipoLadoPills(tipoSerie, lado){
   const tipoPill = tipoSerie && TIPO_SERIE_LABELS[tipoSerie] ? `<span class="pill" style="padding:2px 8px; font-size:10.5px;">${TIPO_SERIE_LABELS[tipoSerie]}</span>` : '';
@@ -2252,7 +2262,7 @@ async function renderAlumnoHome(){
       </div>
     ` : `<div class="card">${emptyKiloHtml('Aún no tienes una rutina activa. Tu profesor te asignará una pronto.', 'espera', 'padding:16px;')}</div>`}
 
-    ${historialRutinas && historialRutinas.length ? `<button class="link-btn" id="btn-ver-mis-rutinas" style="margin-bottom:16px;">Ver rutinas anteriores (${historialRutinas.length}) →</button>` : ''}
+    ${historialRutinas && historialRutinas.length ? `<button class="btn-hist" id="btn-ver-mis-rutinas"><span class="bh-ico">${ICONS.clipboard}</span><span class="bh-t">Rutinas anteriores<small>${historialRutinas.length} guardada${historialRutinas.length === 1 ? '' : 's'}</small></span><span class="bh-go">›</span></button>` : ''}
 
     <button class="btn-toggle-rutina section-calendar" id="btn-toggle-calendario">
       <span class="toggle-label">${ICONS.calendar} Calendario</span>
@@ -5765,7 +5775,7 @@ async function renderCoachAlumnoDetail(alumnoId){
         </div>
       </div>
     `}
-    ${historial && historial.length ? `<button class="link-btn" id="btn-ver-historial-rutinas" style="margin-bottom:16px;">Ver rutinas anteriores (${historial.length}) →</button>` : ''}
+    ${historial && historial.length ? `<button class="btn-hist" id="btn-ver-historial-rutinas"><span class="bh-ico">${ICONS.clipboard}</span><span class="bh-t">Rutinas anteriores<small>${historial.length} guardada${historial.length === 1 ? '' : 's'}</small></span><span class="bh-go">›</span></button>` : ''}
     ${rutina ? `
       <div class="card routine-plan hidden" id="rutina-detail-card">
         <div class="row-flex" style="margin-bottom:6px;">
@@ -6025,13 +6035,13 @@ function renderRutinaEditor(alumno, prefill, editingRutinaId, returnFn, plantill
   const titulo = esPlantilla ? (rutinaEditorId ? 'Editar plantilla' : 'Nueva plantilla') : esAlumnoEditando
     ? (rutinaEditorId ? 'Editar mi rutina' : (prefill ? 'Crear desde una rutina' : 'Crear mi rutina'))
     : (rutinaEditorId ? 'Editar rutina' : (prefill ? 'Duplicar rutina' : 'Nueva rutina'));
-  const subtitulo = esPlantilla ? 'Las plantillas no se asignan a ningún alumno hasta que tú lo elijas. Puedes armar hasta 5 días.' : esAlumnoEditando
+  const subtitulo = esPlantilla ? 'Las plantillas no se asignan a ningún alumno hasta que tú lo elijas. Puedes armar hasta 7 días.' : esAlumnoEditando
     ? (rutinaEditorId
       ? 'Esta rutina fue creada por ti. Cambia los días, ejercicios y objetivos que necesites.'
-      : 'Arma hasta 5 días y elige ejercicios del banco visual. Al guardarla quedará como tu rutina activa.')
+      : 'Arma hasta 7 días y elige ejercicios del banco visual. Al guardarla quedará como tu rutina activa.')
     : (rutinaEditorId
       ? 'Estás editando la rutina activa del alumno: los cambios se guardan sobre esta misma rutina.'
-      : 'Esta va a quedar como la rutina activa del alumno. Puedes armar hasta 5 días distintos (ej: Empuje, Tracción, Piernas).');
+      : 'Esta va a quedar como la rutina activa del alumno. Puedes armar hasta 7 días distintos (ej: Empuje, Tracción, Piernas).');
 
   root().innerHTML = `
     <div class="header-actions">
@@ -6059,6 +6069,7 @@ function renderRutinaEditor(alumno, prefill, editingRutinaId, returnFn, plantill
   renderRutinaDiasEditor();
 }
 
+const RUTINA_MAX_DIAS = 7;
 let rutinaDiaActivo = 0;
 let rutinaExAbierto = null;
 function renderRutinaDiasEditor(){
@@ -6067,7 +6078,10 @@ function renderRutinaDiasEditor(){
   if(rutinaDiaActivo >= rutinaEditorDias.length) rutinaDiaActivo = Math.max(0, rutinaEditorDias.length - 1);
   const d = rutinaDiaActivo;
   const dia = rutinaEditorDias[d];
-  const tabs = `<div class="red-tabs">${rutinaEditorDias.map((di, i) => `<button type="button" class="red-tab ${i === d ? 'on' : ''}" onclick="rutinaIrADia(${i})">${fxDeDia(di) ? '⚡ ' : ''}${escapeHtml(di.nombre || `Día ${i + 1}`)}<span>${di.ejercicios.filter(r => (r.nombre || '').trim()).length}</span></button>`).join('')}${rutinaEditorDias.length < 5 ? `<button type="button" class="red-tab add" onclick="agregarDiaRutina()">＋ Día</button>` : ''}</div>`;
+  const tabs = `<div class="red-tabs">${rutinaEditorDias.map((di, i) => `<button type="button" class="red-tab ${i === d ? 'on' : ''}" onclick="rutinaIrADia(${i})">${fxDeDia(di) ? '⚡ ' : ''}${escapeHtml(di.nombre || `Día ${i + 1}`)}<span>${di.ejercicios.filter(r => (r.nombre || '').trim()).length}</span></button>`).join('')}${rutinaEditorDias.length < RUTINA_MAX_DIAS ? `<button type="button" class="red-tab add" onclick="agregarDiaRutina()">＋ Día</button>` : ''}</div>`;
+  const agregarDia = rutinaEditorDias.length < RUTINA_MAX_DIAS
+    ? `<button type="button" class="red-add-dia" onclick="agregarDiaRutina()">＋ Agregar otro día<small>${rutinaEditorDias.length} de ${RUTINA_MAX_DIAS}</small></button>`
+    : `<p class="red-max-dias">Llegaste al máximo de ${RUTINA_MAX_DIAS} días por programa.</p>`;
   const cabecera = `
     <div class="red-dia-head">
       <input type="text" class="red-dia-nombre" value="${escapeHtml(dia.nombre)}" oninput="rutinaEditorDias[${d}].nombre=this.value" onchange="renderRutinaDiasEditor()" placeholder="Ej: Día 1 — Empuje">
@@ -6080,7 +6094,9 @@ function renderRutinaDiasEditor(){
       ${cabecera}
       ${fxTipoDiaHtml(d)}
       ${fxEditorDiaHtml(d)}
-    </div>`;
+    </div>
+    ${agregarDia}`;
+    redAjustarTabs(holder);
     return;
   }
   const filas = dia.ejercicios.map((row, e) => redTarjetaHtml(row, d, e, dia.ejercicios.length)).join('');
@@ -6094,7 +6110,14 @@ function renderRutinaDiasEditor(){
         <button type="button" class="red-btn-agregar" onclick="abrirBuscadorRutina(${d})">＋ Agregar ejercicio</button>
         <button type="button" class="red-btn-lupa" onclick="abrirBuscadorRutina(${d})" aria-label="Buscar ejercicio">${ICONS.search}</button>
       </div>
-    </div>`;
+    </div>
+    ${agregarDia}`;
+  redAjustarTabs(holder);
+}
+function redAjustarTabs(holder){
+  const tb = holder.querySelector('.red-tabs');
+  const on = holder.querySelector('.red-tab.on');
+  if(tb && on) tb.scrollLeft = Math.max(0, on.offsetLeft - 24);
 }
 
 function redTarjetaHtml(row, d, e, total){
@@ -6167,7 +6190,7 @@ function redTarjetaHtml(row, d, e, total){
 function rutinaIrADia(i){ rutinaDiaActivo = i; rutinaExAbierto = null; renderRutinaDiasEditor(); }
 function abrirTarjetaRutina(d, e){ rutinaExAbierto = `${d}-${e}`; renderRutinaDiasEditor(); }
 function agregarDiaRutina(){
-  if(rutinaEditorDias.length >= 5){ showToast('Máximo 5 días por programa'); return; }
+  if(rutinaEditorDias.length >= RUTINA_MAX_DIAS){ showToast(`Máximo ${RUTINA_MAX_DIAS} días por programa`); return; }
   rutinaEditorDias.push({ nombre: `Día ${rutinaEditorDias.length + 1}`, ejercicios: [] });
   rutinaDiaActivo = rutinaEditorDias.length - 1;
   rutinaExAbierto = null;
