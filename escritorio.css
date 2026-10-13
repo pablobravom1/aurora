@@ -1,0 +1,79 @@
+/* ============================================================
+   STC App — adaptación a computador (PC / notebook / tablet horizontal)
+   TODO está dentro de @media (min-width:900px): en celular no cambia nada.
+   ============================================================ */
+
+/* ---------- Pantallas desde 900px: columna cómoda y centrada ---------- */
+@media (min-width:900px){
+  .wrap{max-width:880px; padding-left:28px; padding-right:28px; padding-bottom:60px;}
+  body.descanso-activo .wrap{padding-bottom:150px;}
+  .toast{max-width:480px;}
+
+  /* efecto "al pasar el mouse" (solo equipos con mouse) */
+  @media (hover:hover){
+    .btn-toggle-rutina, .coach-list-item, .pl-acceso, .rl-nav, .ficha-aviso-card, .objetivos-aviso-card, .pp-home .pp-card{transition:filter .15s ease, transform .15s ease, border-color .15s ease;}
+    .btn-toggle-rutina:hover, .coach-list-item:hover, .pl-acceso:hover, .rl-nav:hover, .ficha-aviso-card:hover, .objetivos-aviso-card:hover{filter:brightness(1.12);}
+    .pp-home:hover .pp-card{border-color:rgba(255,255,102,.45);}
+  }
+}
+
+/* ---------- Pantallas desde 1100px: paneles anchos en dos columnas ---------- */
+@media (min-width:1100px){
+  /* Pantallas "panel" (inicio del alumno, profesor, RS, LOC y administración, ficha del alumno...) */
+  .wrap:has(#app-root > .btn-toggle-rutina),
+  .wrap:has(#app-root > #coach-alumnos-list),
+  .wrap:has(#app-root > .row-flex #btn-toggle-scope),
+  .wrap:has(#app-root > #roles-extra){max-width:1180px;}
+
+  /* Los acordeones ("Ver ▾") quedan de a dos por fila; lo que se abre ocupa todo el ancho justo debajo */
+  #app-root:has(> .btn-toggle-rutina),
+  #roles-extra,
+  #app-root:has(> #coach-alumnos-list){
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:18px; row-gap:12px; align-items:start;
+  }
+  #app-root:has(> .btn-toggle-rutina) > *,
+  #roles-extra > *,
+  #app-root:has(> #coach-alumnos-list) > *{grid-column:1 / -1; margin-top:0; margin-bottom:0;}
+  #app-root:has(> .btn-toggle-rutina) > .btn-toggle-rutina,
+  #roles-extra > .rl-nav,
+  #roles-extra > .btn-toggle-rutina{grid-column:auto; margin-top:0; margin-bottom:0;}
+  #roles-extra > .rl-group-title{grid-column:1 / -1; margin-top:10px;}
+  /* Contenedores vacíos (avisos que se llenan después) no ocupan fila */
+  #app-root:has(> .btn-toggle-rutina) > :empty,
+  #app-root:has(> #coach-alumnos-list) > :empty{display:none;}
+
+  /* Inicio del profesor / admin: perfil a la izquierda; accesos a la derecha */
+  #app-root:has(> .pp-home){grid-template-rows:auto auto auto 1fr;}
+  #app-root#app-root:has(> .pp-home) > .pp-home{grid-column:1; grid-row:2 / span 3;}
+  #app-root#app-root:has(> .pp-home) > .pl-acceso{grid-column:2; grid-row:2;}
+  #app-root#app-root:has(> .pp-home) > .card{grid-column:2; grid-row:3;}
+  #app-root#app-root:has(> .pp-home) > #push-aviso-holder{grid-column:2; grid-row:4;}
+
+  /* Listas de alumnos / profesores: de a dos */
+  #coach-alumnos-list{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 18px; align-items:stretch;}
+  #coach-alumnos-list > *{margin-bottom:0;}
+  #coach-alumnos-list > .empty, #coach-alumnos-list > .card, #coach-alumnos-list > p{grid-column:1 / -1;}
+
+  /* Calendario: tamaño cómodo (no gigante) */
+  .calendar{max-width:640px; margin-left:auto; margin-right:auto;}
+
+  /* Logros: más columnas */
+  .logros-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));}
+
+  /* Noticias STC: tarjetas de a dos */
+  #nw-lista{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px 18px; align-items:start;}
+  #nw-lista > *{margin-bottom:0;}
+  #nw-lista > .nw-vacio{grid-column:1 / -1;}
+  .wrap:has(#nw-lista){max-width:1180px;}
+}
+
+/* ---------- Pantallas muy anchas ---------- */
+@media (min-width:1500px){
+  .wrap:has(#app-root > .btn-toggle-rutina),
+  .wrap:has(#app-root > #coach-alumnos-list),
+  .wrap:has(#app-root > .row-flex #btn-toggle-scope),
+  .wrap:has(#app-root > #roles-extra),
+  .wrap:has(#nw-lista){max-width:1320px;}
+  #app-root:has(> #coach-alumnos-list) #coach-alumnos-list,
+  #app-root #coach-alumnos-list{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
