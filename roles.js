@@ -475,7 +475,7 @@ window.renderConexiones = async function(titulo, claves, volver){
 window.montarGestionPerfiles = async function(holderId){
   const holder = document.getElementById(holderId);
   holder.innerHTML = `<div class="loading">Cargando personas...</div>`;
-  const { data, error } = await sb.from('profiles').select('id,nombre,role,es_supervisor,username,perfil_pro').order('nombre');
+  const { data, error } = await sb.from('profiles').select('id,nombre,role,es_supervisor,username,perfil_pro,avatar_key,foto_perfil_url').order('nombre');
   if(error){ holder.innerHTML = `<div class="error-banner">No se pudo cargar la lista.</div>`; return; }
   const todos = (data || []).filter(p => p.id !== profile.id && (profile.es_super || p.role !== 'super_admin'));
   holder.innerHTML = `<div class="card"><p class="ck-hint">Aquí le das un perfil a una cuenta que ya existe (la persona crea su cuenta con su correo y tú le asignas el perfil). Solo un administrador puede hacer estos cambios.${profile.es_super ? ' Como super administrador, solo tú puedes crear otros administradores: tendrán todo lo que tienes tú, pero no podrán crear ni quitar administradores.' : ''}</p>
@@ -488,7 +488,7 @@ window.montarGestionPerfiles = async function(holderId){
     const staff = vis.filter(p => p.role !== 'alumno');
     const alumnos = vis.filter(p => p.role === 'alumno');
     const mostrarAlumnos = q ? alumnos.slice(0, 30) : [];
-    const fila = (p) => `<div class="rl-perfil" data-id="${p.id}"><div class="n">${esc(p.nombre || '(sin nombre)')}<small>${esc(rolEtiqueta(p))}</small></div>
+    const fila = (p) => `<div class="rl-perfil" data-id="${p.id}">${typeof renderProfileAvatar === 'function' ? renderProfileAvatar(p, 'avatar-chat') : ''}<div class="n">${esc(p.nombre || '(sin nombre)')}<small>${esc(rolEtiqueta(p))}</small></div>
       <select data-rol><option value="alumno"${p.role === 'alumno' ? ' selected' : ''}>Alumno</option><option value="profesor"${p.role === 'profesor' ? ' selected' : ''}>Profesor</option><option value="responsable_sede"${p.role === 'responsable_sede' ? ' selected' : ''}>Responsable de Sede</option><option value="loc"${p.role === 'loc' ? ' selected' : ''}>LOC</option>${profile.es_super ? `<option value="super_admin"${p.role === 'super_admin' ? ' selected' : ''}>Administrador</option>` : ''}</select>
       <label class="sup"><input type="checkbox" data-sup${p.es_supervisor ? ' checked' : ''}${p.role === 'profesor' ? '' : ' disabled'}> Supervisor</label>
       <button class="btn-sm" data-guardar>Guardar</button>
