@@ -502,7 +502,7 @@ function renderEstadoVencimiento(label, fechaIso, diasVigencia, sinRegistroTexto
   const vencida = estaVencida(fechaIso, diasVigencia);
   const notaTxt = notaExtra ? ` (${escapeHtml(notaExtra)})` : '';
   const texto = `${escapeHtml(label)}: ${formatDateShort(fechaIso)}${notaTxt}${vencida ? ' (vencida)' : ''}`;
-  return vencida ? `<span style="color:var(--red); font-weight:600;">${texto}</span>` : `<span>${texto}</span>`;
+  return vencida ? `<span style="color:var(--red); font-weight:600;">${texto}</span>` : `<span style="color:var(--green); font-weight:600;">${texto}</span>`;
 }
 
 // Texto corto para mostrar el "tipo" de una fila de medición/excepción.
@@ -6397,8 +6397,29 @@ async function guardarRutina(alumno){
   btn.disabled = true; btn.textContent = 'Guardando...';
 
   if(rutinaEditorId){
+    // Si la rutina activa cambia, la versión anterior queda guardada en "Rutinas anteriores"
+    // y la rutina cuenta como al día (su fecha pasa a hoy).
+    const cambiosRutina = { nombre, objetivo: objetivo || null };
+    try{
+      const { data: previa } = await sb.from('rutinas').select('*, rutina_ejercicios(*)').eq('id', rutinaEditorId).maybeSingle();
+      if(previa && previa.activa){
+        const norm = v => (v && typeof v === 'object') ? JSON.stringify(v) : String(v == null ? '' : v);
+        const firma = rows => (rows || []).slice().sort((a, b) => ((a.dia_orden||0) - (b.dia_orden||0)) || ((a.orden||0) - (b.orden||0)))
+          .map(r => ['nombre','series_objetivo','reps_objetivo','unidad_objetivo','peso_objetivo','nota','descanso_seg','tipo_serie_objetivo','lado_objetivo','dia_nombre','circuito'].map(k => norm(r[k])).join('|')).join('~');
+        const cambio = previa.nombre !== nombre || (previa.objetivo || '') !== (objetivo || '') || firma(previa.rutina_ejercicios) !== firma(filas);
+        if(cambio){
+          cambiosRutina.fecha = todayStr();
+          const { id: _viejoId, rutina_ejercicios: ejViejos, ...resto } = previa;
+          const { data: copia, error: errCopia } = await sb.from('rutinas').insert({ ...resto, activa: false }).select('id').single();
+          if(!errCopia && copia){
+            const { error: errCopiaEj } = await sb.from('rutina_ejercicios').insert((ejViejos || []).map(({ id: _ejId, ...e }) => ({ ...e, rutina_id: copia.id })));
+            if(errCopiaEj) await sb.from('rutinas').delete().eq('id', copia.id);
+          }
+        }
+      }
+    }catch(_e){ console.warn('No se pudo guardar la versión anterior de la rutina', _e); }
     const { error: errUpd } = await sb.from('rutinas')
-      .update({ nombre, objetivo: objetivo || null })
+      .update(cambiosRutina)
       .eq('id', rutinaEditorId);
     if(errUpd){ showToast('No se pudo actualizar la rutina'); btn.disabled=false; btn.textContent='Guardar cambios'; return; }
 
