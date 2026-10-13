@@ -66,6 +66,31 @@
   .gu-ej b{color:#F7C51E}
   .gu-rec{margin-top:12px;background:#F7C51E;border-radius:14px;padding:11px 13px;font:600 12px/1.4 'Inter',sans-serif;color:#111;display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
   .gu-rec span:last-child{font-weight:700}
+  @media (min-width:900px){
+  .gu-bar{padding:12px 28px}
+  .gu-scroll{padding:24px 32px 40px}
+  .gu-doc{max-width:1080px}
+  .gu-head{padding:26px 24px 20px}
+  .gu-logo i{font-size:50px}
+  .gu-logo small{font-size:11px}
+  .gu-head h2{font-size:44px}
+  .gu-lema{font-size:13px;margin-top:14px}
+  .gu-banner{font-size:15px;padding:14px 18px;text-align:center;margin:14px 0}
+  .gu-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0}
+  .gu-grid .gu-p{margin-bottom:0}
+  .gu-p b{font-size:16.5px}
+  .gu-p small{font-size:13.5px}
+  .gu-final{margin:24px 0 14px;font-size:14px}
+  .gu-alm{padding:22px 20px;margin-top:20px}
+  .gu-alm h3{font-size:16px}
+  .gu-pasos{grid-template-columns:repeat(4,1fr);gap:18px}
+  .gu-paso b{font-size:13px}
+  .gu-paso small{font-size:12.5px}
+  .gu-paso code{font-size:12px}
+  .gu-ej{font-size:12.5px}
+  .gu-rec{font-size:14px;padding:14px 18px;margin-top:16px}
+  .gu-btn{max-width:560px}
+  }
   `;
   document.head.appendChild(css);
 
@@ -79,9 +104,9 @@
         <div class="gu-lema">Conoce<em>•</em>Comprende<em>•</em>Personaliza<em>•</em>Retén</div>
       </div>
       <div class="gu-banner">Conversa abierta, cercana y profesional para conocer al cliente y entregarle la mejor experiencia.</div>
-      ${PREGUNTAS.map(fila).join('')}
+      <div class="gu-grid">${PREGUNTAS.map(fila).join('')}</div>
       <div class="gu-final"><span>BLOQUE FINAL</span></div>
-      ${FINAL.map(fila).join('')}
+      <div class="gu-grid">${FINAL.map(fila).join('')}</div>
       <div class="gu-alm">
         <h3>¿Cómo se almacena?</h3>
         <div class="gu-pasos">${PASOS.map(p => `<div class="gu-paso"><div class="gu-pi" aria-hidden="true">${p.ico}</div><b>${p.t}</b><small>${p.d}</small>${p.k ? `<code>${p.k}</code>` : ''}</div>`).join('')}</div>
