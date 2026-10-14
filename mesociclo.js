@@ -1013,54 +1013,76 @@
     }
   }
 
-  function tarjetaStaff(alumno, m, puede, volver){
-    if(!m){
-      return `<div class="ms-card" id="ms-card-det"><div class="ms-ck">MESOCICLO</div><h3>Sin mesociclo en curso</h3>
-        ${puede ? '<div class="ms-tools" style="margin:10px 0 0"><button type="button" class="ms-chipb" id="msd-asignar">＋ Asignar mesociclo</button><button type="button" class="ms-chipb plain" id="msd-ant">Anteriores</button></div>' : '<div class="ms-tools" style="margin:10px 0 0"><button type="button" class="ms-chipb plain" id="msd-ant">Anteriores</button></div>'}</div>`;
-    }
-    const w = m.semana_aplicada || semanaActual(m);
-    const due = Math.min(m.semanas, Math.max(1, semanaPorFecha(m)));
-    return `<div class="ms-card" id="ms-card-det"><div class="ms-ck">MESOCICLO</div>
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h3>${esc(m.nombre)}</h3><span class="ms-pill">Semana ${w} de ${m.semanas}</span></div>
-      <div class="ms-prog"><i style="width:${Math.round(w / m.semanas * 100)}%"></i></div>
-      ${puede && due > w ? `<div class="ms-aviso">Ya corresponde la <b>semana ${due}</b>. <button type="button" class="ms-chipb" id="msd-avanzar" style="margin-left:6px;padding:6px 10px">Aplicar ahora</button></div>` : ''}
-      <div class="ms-tools" style="margin:8px 0 0">${puede ? `<button type="button" class="ms-chipb" id="msd-abrir">${IC('edit')} Ver / editar</button>` : '<button type="button" class="ms-chipb" id="msd-abrir">▦ Ver</button>'}<button type="button" class="ms-chipb plain" id="msd-ant">Anteriores</button>${puede ? '<button type="button" class="ms-chipb plain" id="msd-asignar">Cambiar</button>' : ''}</div></div>`;
-  }
-
+  // Ficha del alumno: sin tarjeta propia. Los mesociclos se ven dentro de "Rutinas anteriores" (junto a las de fuerza y funcional).
   async function inyectarDetalle(alumnoId){
-    const cab = document.querySelector('.header-actions');
-    if(!cab || !$id('alumno-nombre-holder') || $id('ms-card-det')) return;
+    if(!$id('alumno-nombre-holder') || $id('ms-hist-det')) return;
     if(!(await disponible())) return;
     const [{ data: ms }, { data: al }] = await Promise.all([
       sb.from('mesociclos').select('*').eq('alumno_id', alumnoId).order('created_at', { ascending:false }),
       sb.from('profiles').select('id,nombre,avatar_key,foto_perfil_url,profesor_id').eq('id', alumnoId).maybeSingle()
     ]);
-    const cab2 = document.querySelector('.header-actions');
-    if(!cab2 || !$id('alumno-nombre-holder') || $id('ms-card-det') || !al) return;
+    if(!$id('alumno-nombre-holder') || $id('ms-hist-det') || !al) return;
     const lista = (ms || []).map(normalizarPlan);
-    let activo = lista.find(x => x.estado === 'activo') || null;
+    const activo = lista.find(x => x.estado === 'activo') || null;
     const puede = (typeof esGestor === 'function' && esGestor()) || al.profesor_id === profile.id;
     const volver = () => renderCoachAlumnoDetail(alumnoId);
     if(activo && puede){ try{ if(await avanzarSiCorresponde(activo)){ toast('Semana del mesociclo actualizada ✓'); volver(); return; } }catch(_e){ toast('No se pudo aplicar la nueva semana'); } }
-    if(!activo && !lista.length && !puede) return;
-    const wrap = document.createElement('div');
-    wrap.innerHTML = tarjetaStaff(al, activo, puede, volver);
-    cab2.insertAdjacentElement('afterend', wrap.firstElementChild);
-    const bAsignar = $id('msd-asignar'), bAnt = $id('msd-ant'), bAbrir = $id('msd-abrir'), bAv = $id('msd-avanzar');
-    if(bAsignar) bAsignar.onclick = async () => {
-      const { data: plant } = await sb.from('mesociclos').select('*').is('alumno_id', null).order('updated_at', { ascending:false });
-      const propias = (plant || []).filter(x => x.creado_por === profile.id || (typeof esGestor === 'function' && esGestor())).map(normalizarPlan);
-      if(!propias.length){ toast('Primero crea una plantilla en Mis plantillas → Mesociclos'); return; }
-      if(window.UCEquipo && window.UCEquipo.elegir){
-        window.UCEquipo.elegir({ titulo:'¿Qué mesociclo usar?', actual:'', items: propias.map(x => ({ id:x.id, nombre:x.nombre, sub: resumenM(x) })), alElegir: (id) => asignar(propias.find(x => x.id === id), al, volver) });
-      }
-    };
-    if(bAnt) bAnt.onclick = () => anterioresDe(alumnoId, volver, puede);
-    if(bAbrir) bAbrir.onclick = () => { if(puede) abrirEditor(clon(activo), volver, false); else verSoloLectura(activo, volver); };
-    if(bAv) bAv.onclick = async () => {
-      bAv.disabled = true;
-      try{ await avanzarSiCorresponde(activo); toast('Semana aplicada ✓'); volver(); }catch(err){ toast('No se pudo aplicar: ' + err.message); bAv.disabled = false; }
-    };
+    if(!lista.length) return;
+    const txtMs = `${lista.length} mesociclo${lista.length === 1 ? '' : 's'}`;
+    const existente = $id('btn-ver-historial-rutinas');
+    if(existente){
+      // Ya está el botón "Rutinas anteriores": solo se suma el conteo de mesociclos
+      const sm = existente.querySelector('.bh-t small'); if(sm) sm.textContent += ' · ' + txtMs;
+      existente.dataset.ms = '1';
+      return;
+    }
+    // El alumno solo tiene mesociclos: se muestra el mismo botón "Rutinas anteriores" de la app
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn-hist'; b.id = 'ms-hist-det';
+    b.innerHTML = `<span class="bh-ico">${IC('clipboard')}</span><span class="bh-t">Rutinas anteriores<small>${esc(txtMs)}</small></span><span class="bh-go">›</span>`;
+    const ancla = $id('rutina-detail-card') || $id('btn-toggle-mediciones');
+    if(!ancla) return;
+    ancla.insertAdjacentElement('beforebegin', b);
+    const soloObservador = profile.role === 'profesor' && al.profesor_id !== profile.id;
+    b.onclick = () => renderHistorialRutinas(al, volver, !soloObservador);
+  }
+
+  // Dentro de "Rutinas anteriores": los mesociclos del alumno arriba, y debajo las rutinas de siempre
+  async function mesociclosEnHistorial(alumno, volverFn, permitirDuplicar){
+    const listEl = $id('historial-rutinas-list');
+    if(!listEl || !alumno || $id('ms-hist-sec') || !(await disponible())) return;
+    const { data, error } = await sb.from('mesociclos').select('*').eq('alumno_id', alumno.id).order('created_at', { ascending:false });
+    const listEl2 = $id('historial-rutinas-list');
+    if(error || !listEl2 || $id('ms-hist-sec') || !data || !data.length) return;
+    const ms = data.map(normalizarPlan);
+    const volverAqui = () => renderHistorialRutinas(alumno, volverFn, permitirDuplicar);
+    const staff = profile && profile.role !== 'alumno';
+    const hayRutinas = !!listEl2.querySelector('.routine-history-card');
+    if(!hayRutinas) listEl2.innerHTML = '';
+    const sec = document.createElement('div'); sec.id = 'ms-hist-sec';
+    sec.innerHTML = `<div class="ms-h2" style="margin:4px 2px 10px">📅 Mesociclos</div>
+      ${ms.map(m => {
+        const activo = m.estado === 'activo';
+        const editar = staff && permitirDuplicar && activo && puedeEditarDe(m);
+        return `<div class="card routine-plan routine-history-card">
+          <div class="row-flex" style="margin-bottom:6px;">
+            <div><h2 style="margin:0 0 7px;">${esc(m.nombre)}</h2><span class="ms-pill ${activo ? 'ok' : ''}">${activo ? `En curso · semana ${m.semana_aplicada || semanaActual(m)} de ${m.semanas}` : '✓ Completado'}</span></div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+              <button type="button" class="btn-sm" data-msver="${m.id}">▦ Ver</button>
+              ${editar ? `<button type="button" class="btn-sm" data-msedit="${m.id}">${IC('edit')} Editar</button>` : ''}
+              ${staff && permitirDuplicar ? `<button type="button" class="btn-sm" data-mspl="${m.id}">⧉ Plantilla</button>` : ''}
+            </div>
+          </div>
+          ${m.objetivo ? `<div class="sub" style="margin-bottom:6px;">${esc(m.objetivo)}</div>` : ''}
+          <div class="sub">${[rangoFechas(m), esc(resumenM(m)), exTotal(m) + ' ejercicio' + (exTotal(m) === 1 ? '' : 's')].filter(Boolean).join(' · ')}</div>
+        </div>`;
+      }).join('')}
+      ${hayRutinas ? '<div class="ms-h2" style="margin:18px 2px 10px">📋 Rutinas</div>' : ''}`;
+    listEl2.insertAdjacentElement('afterbegin', sec);
+    const por = (id) => ms.find(x => x.id === id);
+    sec.querySelectorAll('[data-msver]').forEach(b => b.onclick = () => verSoloLectura(clon(por(b.dataset.msver)), volverAqui));
+    sec.querySelectorAll('[data-msedit]').forEach(b => b.onclick = () => abrirEditor(clon(por(b.dataset.msedit)), volverAqui, false));
+    sec.querySelectorAll('[data-mspl]').forEach(b => b.onclick = async () => { b.disabled = true; E = { volver: volverAqui }; await duplicarPlantilla(por(b.dataset.mspl)); });
   }
 
   async function inyectarAlumno(){
@@ -1126,14 +1148,16 @@
     nueva.__ms = true;
     window[nombre] = nueva;
   }
-  // Mesociclo como tercera opción al crear una rutina o plantilla (Fuerza · Funcional · Mesociclo)
+  // Mesociclo como opción al crear una rutina o plantilla, entre Fuerza y Funcional (Fuerza · Mesociclo · Funcional y sus formatos)
   (function(){
     const origHtml = window.fxPlantillaHtml;
     if(typeof origHtml === 'function' && !origHtml.__ms){
       const nuevo = function(){
         const html = origHtml.apply(this, arguments);
         if(!profile || profile.role === 'alumno') return html;
-        const tarjeta = `<button type="button" class="fx-tpl ms-tpl" data-plantilla="mesociclo" style="margin-top:14px"><span class="fx-nuevo">NUEVO</span><span class="fx-tpl-ic">📅</span><span class="fx-tpl-txt"><b>Mesociclo</b><small>Planifica varias semanas: ejercicios, series y pesos por semana, con progresión y semanas de descarga.</small></span><span class="fx-tpl-go">›</span></button>`;
+        const tarjeta = `<button type="button" class="fx-tpl ms-tpl" data-plantilla="mesociclo"><span class="fx-nuevo">NUEVO</span><span class="fx-tpl-ic">📅</span><span class="fx-tpl-txt"><b>Mesociclo</b><small>Planifica varias semanas: ejercicios, series y pesos por semana, con progresión y semanas de descarga.</small></span><span class="fx-tpl-go">›</span></button>`;
+        const func = '<div class="fx-tpl fx-tpl-func">';
+        if(html.includes(func)) return html.replace(func, tarjeta + func);
         return html.includes('<div class="fx-tip">') ? html.replace('<div class="fx-tip">', tarjeta + '<div class="fx-tip">') : html + tarjeta;
       };
       nuevo.__ms = true; window.fxPlantillaHtml = nuevo;
@@ -1219,6 +1243,7 @@
     });
   });
   envolver('renderCoachAlumnoDetail', function(alumnoId){ return inyectarDetalle(alumnoId); });
+  envolver('renderHistorialRutinas', function(alumno, volverFn, permitirDuplicar){ return mesociclosEnHistorial(alumno, volverFn, permitirDuplicar); });
   envolver('renderAlumnoHome', function(){ return inyectarAlumno(); });
   envolver('renderCoachHome', function(){ return autoAvanzarHome(); });
 
