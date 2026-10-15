@@ -134,11 +134,13 @@
   const D = (mes, sec) => { const f = fila(mes, sec); return f ? (f.datos || {}) : null; };
 
   async function cargarDatos(){
-    const [{ data, error }, eq] = await Promise.all([
+    const [{ data, error }, eq, sy] = await Promise.all([
       sb.from('ceo_datos').select('mes,seccion,datos,fuente,corte,actualizado_at').order('mes'),
-      sb.rpc('ventas_equipo')
+      sb.rpc('ventas_equipo'),
+      sb.rpc('ceo_sync_estado')
     ]);
     if(error) throw error;
+    S.sync = (sy && !sy.error && sy.data && sy.data[0]) || null;
     const por = {};
     (data || []).forEach(r => { (por[r.mes] = por[r.mes] || {})[r.seccion] = r; });
     S.datos = por;
@@ -248,7 +250,13 @@
     // --- corte de los datos
     const cortes = ['ventas','retencion','protocolos','comercial','inversion','bajas'].map(s => fila(m, s) && (fila(m, s).corte || String(fila(m, s).actualizado_at).slice(0, 10))).filter(Boolean).sort();
     const bc = $id('cx-corte');
-    if(bc){ bc.hidden = !cortes.length && !(com && com.envivo); bc.innerHTML = `<i></i> ${com && com.envivo ? 'Comercial en vivo · ' : ''}${cortes.length ? 'datos al ' + fCorta(cortes[cortes.length - 1]) : ''}`; }
+    const minSync = S.sync && S.sync.ultima_at ? Math.max(0, Math.round((Date.now() - new Date(S.sync.ultima_at).getTime()) / 60000)) : null;
+    const haceTxt = minSync == null ? '' : minSync < 1 ? 'actualizado recién' : minSync < 60 ? 'actualizado hace ' + minSync + ' min' : minSync < 1440 ? 'actualizado hace ' + Math.round(minSync / 60) + ' h' : 'actualizado hace ' + Math.round(minSync / 1440) + ' días';
+    if(bc){
+      bc.hidden = !cortes.length && !(com && com.envivo) && minSync == null;
+      bc.style.color = minSync != null && minSync > 90 ? 'var(--cx-am)' : '';
+      bc.innerHTML = `<i></i> ${com && com.envivo ? 'Comercial en vivo · ' : ''}${haceTxt || (cortes.length ? 'datos al ' + fCorta(cortes[cortes.length - 1]) : '')}`;
+    }
 
     // --- alertas (solo lo que está bajo el estándar de STC)
     const al = [];
@@ -469,6 +477,16 @@
     };
     nueva.__cx = true; window.renderCoachHome = nueva;
   }
+
+  // En vivo: mientras el panel está abierto y visible, se refresca solo cada 5 minutos y al volver a la pestaña
+  let ultimoRefresco = 0;
+  const refrescar = async () => {
+    if(!$id('cx-cuerpo') || document.visibilityState !== 'visible' || Date.now() - ultimoRefresco < 60000) return;
+    ultimoRefresco = Date.now();
+    try{ await cargarDatos(); await pintar(); }catch(_e){}
+  };
+  setInterval(refrescar, 5 * 60000);
+  document.addEventListener('visibilitychange', refrescar);
 
   window.UCPanelCeo = { abrir: renderPanelCeo };
 })();
