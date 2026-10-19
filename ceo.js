@@ -466,7 +466,7 @@
       if(profile && profile.role === 'ceo') return renderPanelCeo();
       const r = await origCoach.apply(this, arguments);
       try{
-        if(esRol('responsable_sede', 'super_admin') && !$id('cx-acceso')){
+        if(esRol('responsable_sede', 'super_admin', 'jso') && !$id('cx-acceso')){
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'pl-acceso'; b.id = 'cx-acceso';
           b.innerHTML = `<span class="pl-acceso-ico">📊</span><span class="pl-acceso-txt"><small>DIRECCIÓN</small><b>Panel CEO</b><em>Lo que ve el CEO: ventas, retención, protocolos y alertas</em></span><span class="pl-acceso-go">${IC('chevronRight')}</span>`;
@@ -488,6 +488,43 @@
     };
     nueva.__cx = true; window.renderCoachHome = nueva;
   }
+
+  // ---------------------------------------------------------------- perfil JSO (Jefe de Servicio Online)
+  // Usa el inicio de gestión (alumnos, gestión de profesores, tareas) más el Panel CEO. Lo que puede
+  // cambiar lo controla la base de datos (sql/15_perfil_jso.sql); aquí solo se arma la pantalla.
+  const esJso = () => !!profile && profile.role === 'jso';
+  const origGestor = window.esGestor;
+  if(typeof origGestor === 'function' && !origGestor.__jso){
+    const n = () => origGestor() || esJso();
+    n.__jso = true; window.esGestor = n;
+  }
+  const origEtiqueta = window.rolEtiqueta;
+  if(typeof origEtiqueta === 'function' && !origEtiqueta.__jso){
+    const n = (p) => p && p.role === 'jso' ? 'Jefe de Servicio Online' : origEtiqueta(p);
+    n.__jso = true; window.rolEtiqueta = n;
+  }
+  const origVista = window.esVistaCoach;
+  if(typeof origVista === 'function' && !origVista.__jso){
+    const n = (role) => role === 'jso' || origVista(role);
+    n.__jso = true; window.esVistaCoach = n;
+  }
+  // Lo que es propio del RS o del administrador no se le muestra al JSO
+  const SOLO_OTROS = ['rl-btn-ck-rs', 'rl-btn-ck-sup', 'rl-btn-metricas', 'btn-mis-plantillas'];
+  new MutationObserver(() => {
+    if(esJso()){
+      SOLO_OTROS.forEach(id => { const e = $id(id); if(e) e.remove(); });
+      document.querySelectorAll('#app-root button.btn-sm').forEach(b => { if(b.textContent.trim() === 'Eliminar profesor') b.remove(); });
+    }
+    // Perfiles y roles (administrador): opción para convertir un perfil en JSO
+    document.querySelectorAll('.rl-perfil select[data-rol]:not([data-jso])').forEach(sel => {
+      sel.dataset.jso = '1';
+      const fila = sel.closest('.rl-perfil'), etiqueta = (fila && fila.querySelector('.n small') || {}).textContent || '';
+      const o = document.createElement('option');
+      o.value = 'jso'; o.textContent = 'JSO (solo uno)';
+      sel.appendChild(o);
+      if(etiqueta === 'Jefe de Servicio Online') o.selected = true;
+    });
+  }).observe(document.body, { childList:true, subtree:true });
 
   // En vivo: mientras el panel está abierto y visible, se refresca solo cada 5 minutos y al volver a la pestaña
   let ultimoRefresco = 0;
