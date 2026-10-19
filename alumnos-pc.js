@@ -90,12 +90,18 @@
     if(!iso) return `<span class="al-pt r">${sinTxt}</span>`;
     return vencida(iso, vig) ? `<span class="al-pt r" title="${esc(fecha(iso))}">vencida · ${esc(fecha(iso))}</span>` : `<span class="al-pt v" title="${esc(fecha(iso))}">al día · ${esc(fecha(iso))}</span>`;
   };
+  // Entrevista inicial: se hace una sola vez, por eso solo Sí / No (o la excepción marcada)
+  const entrevista = (a) => {
+    if(a.entrevista_excepcion) return { cls:'n', txt: a.entrevista_excepcion === 'no_quiso' ? 'no quiso' : 'no aplica' };
+    return (a.entrevista_audio_url || a.entrevista_fecha) ? { cls:'v', txt:'sí' } : { cls:'r', txt:'no' };
+  };
   const claves = {
     nombre: (a) => String(a.nombre || '').toLowerCase(),
     coach: (a, np) => String(np(a.profesor_id) || 'zzz').toLowerCase(),
     ultima: (a) => a.ultima ? new Date(a.ultima).getTime() : 0,
     rutina: (a) => a.rutinaFecha ? new Date(a.rutinaFecha).getTime() : 0,
-    medicion: (a) => a.medicionFecha ? new Date(a.medicionFecha).getTime() : 0
+    medicion: (a) => a.medicionFecha ? new Date(a.medicionFecha).getTime() : 0,
+    entrevista: (a) => ({ v:2, n:1, r:0 })[entrevista(a).cls]
   };
 
   function tabla(lista, esSuperAdmin, profesores, nombreProfesor, unread){
@@ -105,21 +111,22 @@
     if(S.agrupar === 'profe') vis.sort((a, b) => { const ca = coachDe(a, nombreProfesor), cb = coachDe(b, nombreProfesor); if(ca === cb) return 0; if(!ca) return 1; if(!cb) return -1; return ca.localeCompare(cb, 'es'); });
     const cuenta = {}; vis.forEach(a => { const k = coachDe(a, nombreProfesor); cuenta[k] = (cuenta[k] || 0) + 1; });
     let grupo = null;
-    const encabezado = (a) => { if(S.agrupar !== 'profe') return ''; const k = coachDe(a, nombreProfesor); if(k === grupo) return ''; grupo = k; return `<tr class="al-g"><td colspan="6">${esc(k || 'Sin asignar')}<em>${cuenta[k]} alumno${cuenta[k] === 1 ? '' : 's'}</em></td></tr>`; };
+    const encabezado = (a) => { if(S.agrupar !== 'profe') return ''; const k = coachDe(a, nombreProfesor); if(k === grupo) return ''; grupo = k; return `<tr class="al-g"><td colspan="7">${esc(k || 'Sin asignar')}<em>${cuenta[k]} alumno${cuenta[k] === 1 ? '' : 's'}</em></td></tr>`; };
     const th = (k, t) => `<th scope="col"><button type="button" data-orden="${k}">${t}${S.orden === k ? `<i>${S.dir > 0 ? '▲' : '▼'}</i>` : ''}</button></th>`;
     listEl.innerHTML = `<div class="al-wrap">
       <div class="al-filtros" role="group" aria-label="Filtrar alumnos">${FILTROS.map(([k, t, fn]) => `<button type="button" data-f="${k}" class="${S.filtro === k ? 'on' : ''}">${t} <em>${lista.filter(fn).length}</em></button>`).join('')}</div>
       <div class="al-tw"><table class="al-tb">
-        <colgroup><col style="width:30%"><col style="width:${esSuperAdmin ? 17 : 14}%"><col style="width:13%"><col style="width:15%"><col style="width:15%"><col style="width:${esSuperAdmin ? 10 : 13}%"></colgroup>
-        <thead><tr>${th('nombre', 'Alumno')}${th('coach', 'Coach')}${th('ultima', 'Última sesión')}${th('rutina', 'Rutina')}${th('medicion', 'Medición')}<th></th></tr></thead>
+        <colgroup><col style="width:26%"><col style="width:${esSuperAdmin ? 16 : 13}%"><col style="width:12%"><col style="width:14%"><col style="width:10%"><col style="width:14%"><col style="width:${esSuperAdmin ? 8 : 11}%"></colgroup>
+        <thead><tr>${th('nombre', 'Alumno')}${th('coach', 'Coach')}${th('ultima', 'Última sesión')}${th('rutina', 'Rutina')}${th('entrevista', 'Entrevista')}${th('medicion', 'Medición')}<th></th></tr></thead>
         <tbody>${vis.length ? vis.map(a => `${encabezado(a)}<tr data-id="${a.id}">
           <td><span class="al-al">${typeof renderProfileAvatar === 'function' ? renderProfileAvatar(a, 'avatar-list') : ''}<span style="min-width:0"><b>${esc(a.nombre)}</b></span></span></td>
           <td>${esSuperAdmin ? `<select class="al-coach" data-alumno="${a.id}" aria-label="Coach de ${esc(a.nombre)}"><option value="">Sin asignar</option>${profesores.map(p => `<option value="${p.id}" ${a.profesor_id === p.id ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select>` : esc(nombreProfesor(a.profesor_id) || 'Sin asignar')}</td>
           <td>${esc(hace(a.ultima))}</td>
           <td>${estado(a.rutinaFecha, 30, 'sin rutina')}</td>
+          <td><span class="al-pt ${entrevista(a).cls}">${entrevista(a).txt}</span></td>
           <td>${estado(a.medicionFecha, 60, 'sin medición', a.medicionTipo)}</td>
           <td><span class="al-acc">${!esSuperAdmin && a.profesor_id === profile.id ? `<button type="button" class="icon-action teacher-student-chat-action" data-chat="${a.id}" aria-label="Conversar con ${esc(a.nombre)}">${IC('message')}${unread[a.id] ? `<span>${unread[a.id]}</span>` : ''}</button>` : ''}<span class="al-ver">Ver ›</span></span></td>
-        </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:#A8A8A8;padding:22px">Ningún alumno con este filtro.</td></tr>`}</tbody>
+        </tr>`).join('') : `<tr><td colspan="7" style="text-align:center;color:#A8A8A8;padding:22px">Ningún alumno con este filtro.</td></tr>`}</tbody>
       </table></div>
       <p class="al-pie">${vis.length} de ${lista.length} alumnos · toca los títulos para ordenar</p>
     </div>`;
@@ -148,17 +155,28 @@
         try{ return tabla(lista, esSuperAdmin, profesores || [], nombreProfesor, unreadByStudent || {}); }
         catch(err){ console.warn('alumnos-pc', err); }
       }
-      // Celular (lista original): con "Por profesor" se ordena y se agregan títulos por coach
-      if(S.agrupar !== 'profe' || typeof nombreProfesor !== 'function') return orig.apply(this, arguments);
-      const orden = porProfe(lista, nombreProfesor);
+      // Celular (lista original): se agrega "Entrevista: Sí/No" junto a la rutina y,
+      // con "Por profesor", se ordena y se agregan títulos por coach
+      const agrupar = S.agrupar === 'profe' && typeof nombreProfesor === 'function';
+      const orden = agrupar ? porProfe(lista, nombreProfesor) : lista;
       const args = Array.prototype.slice.call(arguments); args[0] = orden;
       const r = orig.apply(this, args);
       try{
         const items = [...listEl.querySelectorAll(':scope > .coach-list-item')];
         if(items.length === orden.length){
-          const cuenta = {}; orden.forEach(a => { const k = coachDe(a, nombreProfesor); cuenta[k] = (cuenta[k] || 0) + 1; });
-          let g = null;
-          orden.forEach((a, i) => { const k = coachDe(a, nombreProfesor); if(k === g) return; g = k; const t = document.createElement('div'); t.className = 'al-grupo'; t.innerHTML = `${esc(k || 'Sin asignar')}<em>${cuenta[k]} alumno${cuenta[k] === 1 ? '' : 's'}</em>`; items[i].insertAdjacentElement('beforebegin', t); });
+          const colores = { v:'var(--green)', r:'var(--red)', n:'var(--chalk-dim)' };
+          orden.forEach((a, i) => {
+            const linea = items[i].querySelectorAll('.coach-meta')[1];
+            const rutina = linea && linea.firstElementChild;
+            if(!rutina) return;
+            const e = entrevista(a);
+            rutina.insertAdjacentHTML('afterend', ` · <span style="color:${colores[e.cls]};font-weight:600">Entrevista: ${e.txt}</span>`);
+          });
+          if(agrupar){
+            const cuenta = {}; orden.forEach(a => { const k = coachDe(a, nombreProfesor); cuenta[k] = (cuenta[k] || 0) + 1; });
+            let g = null;
+            orden.forEach((a, i) => { const k = coachDe(a, nombreProfesor); if(k === g) return; g = k; const t = document.createElement('div'); t.className = 'al-grupo'; t.innerHTML = `${esc(k || 'Sin asignar')}<em>${cuenta[k]} alumno${cuenta[k] === 1 ? '' : 's'}</em>`; items[i].insertAdjacentElement('beforebegin', t); });
+          }
         }
       }catch(_e){}
       return r;
