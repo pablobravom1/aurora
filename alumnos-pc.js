@@ -42,10 +42,43 @@
   .al-ver{color:#FFFF66;font-weight:600;white-space:nowrap}
   .al-acc .icon-action{position:relative}
   .al-pie{margin:8px 4px 0;font-size:12px;color:#8A8A8A}
+  .al-orden{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#A8A8A8;text-transform:uppercase}
+  .al-orden div{display:inline-flex;padding:3px;border-radius:12px;background:#141414;border:1px solid #2e2e2e}
+  .al-orden button{padding:7px 14px;border:0;border-radius:9px;background:transparent;color:#DDD;font:600 12.5px Inter,sans-serif;letter-spacing:0;text-transform:none;cursor:pointer}
+  .al-orden button.on{background:#FFFF66;color:#111}
+  .al-orden button:focus-visible{outline:2px solid #FFFF66;outline-offset:2px}
+  .al-g td{padding:14px 12px 6px;background:rgba(255,255,102,.04);font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#FFFF66;text-transform:uppercase;cursor:default}
+  .al-g td em{font-style:normal;color:#8A8A8A;margin-left:6px}
+  #coach-alumnos-list > .al-grupo{grid-column:1 / -1;margin:14px 2px 6px;font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#FFFF66;text-transform:uppercase}
+  #coach-alumnos-list > .al-grupo:first-child{margin-top:0}
+  #coach-alumnos-list > .al-grupo em{font-style:normal;color:#8A8A8A;margin-left:6px}
   `;
   document.head.appendChild(css);
 
-  const S = { filtro:'todos', orden:'nombre', dir:1, ultimo:null };
+  const S = { filtro:'todos', orden:'nombre', dir:1, ultimo:null, agrupar:'alfa' };
+  try{ if(localStorage.getItem('stc-alumnos-orden') === 'profe') S.agrupar = 'profe'; }catch(_e){}
+  const coachDe = (a, np) => np(a.profesor_id) || '';
+  // Orden por profesor: grupos A–Z por nombre del coach ("Sin asignar" al final) y alumnos A–Z dentro de cada grupo
+  const porProfe = (lista, np) => lista.slice().sort((a, b) => {
+    const ca = coachDe(a, np), cb = coachDe(b, np);
+    if(ca !== cb){ if(!ca) return 1; if(!cb) return -1; return ca.localeCompare(cb, 'es'); }
+    return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
+  });
+  // Selector "Ordenar: A–Z | Por profesor", justo arriba de la lista (sirve en celular y computador)
+  function control(listEl){
+    let c = document.getElementById('al-orden');
+    if(!c){
+      c = document.createElement('div');
+      c.id = 'al-orden'; c.className = 'al-orden';
+      listEl.insertAdjacentElement('beforebegin', c);
+    }
+    c.innerHTML = `Ordenar <div role="group" aria-label="Ordenar alumnos"><button type="button" data-ag="alfa" class="${S.agrupar === 'alfa' ? 'on' : ''}" aria-pressed="${S.agrupar === 'alfa'}">A–Z</button><button type="button" data-ag="profe" class="${S.agrupar === 'profe' ? 'on' : ''}" aria-pressed="${S.agrupar === 'profe'}">Por profesor</button></div>`;
+    c.querySelectorAll('[data-ag]').forEach(b => b.onclick = () => {
+      S.agrupar = b.dataset.ag;
+      try{ localStorage.setItem('stc-alumnos-orden', S.agrupar); }catch(_e){}
+      if(S.ultimo) window.renderListaAlumnos.apply(null, S.ultimo);
+    });
+  }
   const FILTROS = [
     ['todos', 'Todos', () => true],
     ['rutina', 'Rutina vencida o sin rutina', (a) => !a.rutinaFecha || vencida(a.rutinaFecha, 30)],
@@ -69,13 +102,17 @@
     const listEl = document.getElementById('coach-alumnos-list');
     const f = FILTROS.find(x => x[0] === S.filtro) || FILTROS[0];
     const vis = lista.filter(f[2]).slice().sort((a, b) => { const ka = claves[S.orden](a, nombreProfesor), kb = claves[S.orden](b, nombreProfesor); return (ka > kb ? 1 : ka < kb ? -1 : 0) * S.dir; });
+    if(S.agrupar === 'profe') vis.sort((a, b) => { const ca = coachDe(a, nombreProfesor), cb = coachDe(b, nombreProfesor); if(ca === cb) return 0; if(!ca) return 1; if(!cb) return -1; return ca.localeCompare(cb, 'es'); });
+    const cuenta = {}; vis.forEach(a => { const k = coachDe(a, nombreProfesor); cuenta[k] = (cuenta[k] || 0) + 1; });
+    let grupo = null;
+    const encabezado = (a) => { if(S.agrupar !== 'profe') return ''; const k = coachDe(a, nombreProfesor); if(k === grupo) return ''; grupo = k; return `<tr class="al-g"><td colspan="6">${esc(k || 'Sin asignar')}<em>${cuenta[k]} alumno${cuenta[k] === 1 ? '' : 's'}</em></td></tr>`; };
     const th = (k, t) => `<th scope="col"><button type="button" data-orden="${k}">${t}${S.orden === k ? `<i>${S.dir > 0 ? '▲' : '▼'}</i>` : ''}</button></th>`;
     listEl.innerHTML = `<div class="al-wrap">
       <div class="al-filtros" role="group" aria-label="Filtrar alumnos">${FILTROS.map(([k, t, fn]) => `<button type="button" data-f="${k}" class="${S.filtro === k ? 'on' : ''}">${t} <em>${lista.filter(fn).length}</em></button>`).join('')}</div>
       <div class="al-tw"><table class="al-tb">
         <colgroup><col style="width:30%"><col style="width:${esSuperAdmin ? 17 : 14}%"><col style="width:13%"><col style="width:15%"><col style="width:15%"><col style="width:${esSuperAdmin ? 10 : 13}%"></colgroup>
         <thead><tr>${th('nombre', 'Alumno')}${th('coach', 'Coach')}${th('ultima', 'Última sesión')}${th('rutina', 'Rutina')}${th('medicion', 'Medición')}<th></th></tr></thead>
-        <tbody>${vis.length ? vis.map(a => `<tr data-id="${a.id}">
+        <tbody>${vis.length ? vis.map(a => `${encabezado(a)}<tr data-id="${a.id}">
           <td><span class="al-al">${typeof renderProfileAvatar === 'function' ? renderProfileAvatar(a, 'avatar-list') : ''}<span style="min-width:0"><b>${esc(a.nombre)}</b></span></span></td>
           <td>${esSuperAdmin ? `<select class="al-coach" data-alumno="${a.id}" aria-label="Coach de ${esc(a.nombre)}"><option value="">Sin asignar</option>${profesores.map(p => `<option value="${p.id}" ${a.profesor_id === p.id ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select>` : esc(nombreProfesor(a.profesor_id) || 'Sin asignar')}</td>
           <td>${esc(hace(a.ultima))}</td>
@@ -103,9 +140,28 @@
   if(typeof orig === 'function' && !orig.__al){
     const nueva = function(lista, esSuperAdmin, profesores, nombreProfesor, totalSinFiltrar, query, emptyMsgHtml, unreadByStudent){
       S.ultimo = arguments;
-      if(!MQ.matches || !totalSinFiltrar || !lista || !lista.length) return orig.apply(this, arguments);
-      try{ tabla(lista, esSuperAdmin, profesores || [], nombreProfesor, unreadByStudent || {}); }
-      catch(err){ console.warn('alumnos-pc', err); return orig.apply(this, arguments); }
+      const listEl = document.getElementById('coach-alumnos-list');
+      const c0 = document.getElementById('al-orden');
+      if(!totalSinFiltrar || !lista || !lista.length || !listEl){ if(c0) c0.remove(); return orig.apply(this, arguments); }
+      try{ control(listEl); }catch(_e){}
+      if(MQ.matches){
+        try{ return tabla(lista, esSuperAdmin, profesores || [], nombreProfesor, unreadByStudent || {}); }
+        catch(err){ console.warn('alumnos-pc', err); }
+      }
+      // Celular (lista original): con "Por profesor" se ordena y se agregan títulos por coach
+      if(S.agrupar !== 'profe' || typeof nombreProfesor !== 'function') return orig.apply(this, arguments);
+      const orden = porProfe(lista, nombreProfesor);
+      const args = Array.prototype.slice.call(arguments); args[0] = orden;
+      const r = orig.apply(this, args);
+      try{
+        const items = [...listEl.querySelectorAll(':scope > .coach-list-item')];
+        if(items.length === orden.length){
+          const cuenta = {}; orden.forEach(a => { const k = coachDe(a, nombreProfesor); cuenta[k] = (cuenta[k] || 0) + 1; });
+          let g = null;
+          orden.forEach((a, i) => { const k = coachDe(a, nombreProfesor); if(k === g) return; g = k; const t = document.createElement('div'); t.className = 'al-grupo'; t.innerHTML = `${esc(k || 'Sin asignar')}<em>${cuenta[k]} alumno${cuenta[k] === 1 ? '' : 's'}</em>`; items[i].insertAdjacentElement('beforebegin', t); });
+        }
+      }catch(_e){}
+      return r;
     };
     nueva.__al = true;
     window.renderListaAlumnos = nueva;
