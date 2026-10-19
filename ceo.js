@@ -125,6 +125,9 @@
     .cx-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
   }
   @media (prefers-reduced-motion: reduce){.cx-vivo i{animation:none}}
+  /* Accesos del inicio (Panel CEO, Panel de ventas, Mis plantillas) apilados en una sola casilla */
+  .acc-pila{display:flex;flex-direction:column;min-width:0}
+  #app-root#app-root:has(> .pp-home) > .acc-pila{grid-column:2;grid-row:2;align-self:start}
   `;
   document.head.appendChild(css);
 
@@ -471,6 +474,14 @@
           if(ancla) ancla.insertAdjacentElement('beforebegin', b);
           else { const h = root().querySelector('.header-actions'); if(h) h.insertAdjacentElement('afterend', b); else root().prepend(b); }
           b.onclick = () => renderPanelCeo();
+        }
+        // En computador la app ubica cada acceso en la misma casilla: se agrupan para que queden uno bajo otro
+        const pila = ['cx-acceso', 'vt-acceso', 'btn-mis-plantillas'].map($id).filter(e => e && e.parentElement === root());
+        if(pila.length > 1 && !$id('acc-pila')){
+          const w = document.createElement('div');
+          w.id = 'acc-pila'; w.className = 'acc-pila';
+          pila[0].insertAdjacentElement('beforebegin', w);
+          pila.forEach(e => w.appendChild(e));
         }
       }catch(_e){}
       return r;
