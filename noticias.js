@@ -1,5 +1,5 @@
 // STC App — Noticias STC: muro de comunicaciones (sin comentarios, sin sonido ni vibración).
-// Publica quien cumpla puedePublicar() (hoy: solo el super administrador).
+// Publica quien cumpla puedePublicar() (hoy: el super administrador y el JSO).
 // Todos los usuarios ven las noticias vigentes y pueden darles "me gusta".
 // Se carga DESPUÉS de app.js y se engancha a las pantallas de inicio sin modificarlas.
 (function(){
@@ -7,7 +7,7 @@
 
   const TIPOS = { noticia:'Noticia', promo:'Promoción', evento:'Evento', aviso:'Aviso', publicidad:'Publicidad' };
   const esc = (s) => escapeHtml(s);
-  const puedePublicar = () => !!profile && profile.role === 'super_admin' && profile.es_super === true;
+  const puedePublicar = () => !!profile && ((profile.role === 'super_admin' && profile.es_super === true) || profile.role === 'jso');
 
   // ---------- estilos ----------
   const st = document.createElement('style');
