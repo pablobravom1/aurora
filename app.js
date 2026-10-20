@@ -96,6 +96,10 @@ const EXERCISE_BANK = [
   { name:'Pullover en polea', aliases:['pullover polea','straight arm pulldown','jalón brazos rectos'], group:'Espalda', image:'pullover-polea.webp', youtubeUrl:'' }
   ,{ name:'Encogimientos con mancuernas', aliases:['trapecio','shrugs','dumbbell shrug'], group:'Espalda', image:'encogimientos.webp', youtubeUrl:'' }
   ,{ name:'Remo T', aliases:['remo en t','t-bar row','landmine row'], group:'Espalda', image:'remo-t.webp', youtubeUrl:'https://youtube.com/shorts/UW5FEr7S_3A?si=NfPHs-lfV3F8FLJy' }
+  ,{ name:'Remo al mentón', aliases:['remo al menton','remo al mentón con barra','remo al menton con barra','upright row','barbell upright row'], group:'Hombros', image:'remo-al-menton.webp', youtubeUrl:'' }
+  ,{ name:'Zancada con salto con landmine', aliases:['zancadas con salto con landmine','zancada alternada con salto con landmine','zancada con salto landmine','landmine split squat jump','landmine alternating split squat jump'], group:'Piernas', image:'zancada-salto-landmine.webp', youtubeUrl:'' }
+  ,{ name:'Skipping lateral', aliases:['skipping de lado','skip lateral','lateral skip','lateral skipping','skipping sideways'], group:'Funcional', image:'skipping-lateral.webp', youtubeUrl:'' }
+  ,{ name:'Press Pallof', aliases:['press palof','press pallof','pallof press','palof press','press pallof en polea','press antirotación','press antirotacion'], group:'Core', image:'press-pallof.webp', youtubeUrl:'' }
 ];
 
 function normalizeExerciseName(value){
