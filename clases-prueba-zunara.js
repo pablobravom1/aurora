@@ -58,15 +58,16 @@
  }
  function mountSummary(){
   if(!profile||!managers.includes(profile.role))return;
-  const top=document.querySelector('.cx-top');if(!top||document.querySelector('#stc-zunara-summary'))return;
-  const box=document.createElement('article');box.id='stc-zunara-summary';box.className='card stc-trial';box.style.padding='18px';top.insertAdjacentElement('afterend',box);loadSummary(box);
+  const sources=document.querySelector('#cx-cuerpo .cx-fu');if(!sources||document.querySelector('#stc-zunara-summary'))return;
+  const box=document.createElement('article');box.id='stc-zunara-summary';box.className='card stc-trial';box.style.padding='18px';sources.insertAdjacentElement('beforebegin',box);loadSummary(box);
   document.querySelector('#cx-mes')?.addEventListener('change',()=>loadSummary(box));
  }
  function mount(){
   mountSummary();
   if(!allowed()||document.querySelector('#stc-trial-panel')||document.querySelector('#stc-trial-access'))return;
-  const home=document.querySelector('#btn-mi-perfil-coach')||document.querySelector('.cx-top')||document.querySelector('#loc-metricas');if(!home)return;
-  const b=document.createElement('button');b.id='stc-trial-access';b.className='rl-nav';b.type='button';b.innerHTML='<span class="rl-ico">◷</span><span class="rl-t"><small>Zunara · clases de prueba</small><b>'+ (managers.includes(profile.role)?'Pruebas y seguimiento del gimnasio':'Mis clases de prueba')+'</b><em>Contacto, asistencia y próximos prospectos</em></span>';b.onclick=open;home.insertAdjacentElement('afterend',b);
+  const ceo=!!document.querySelector('.cx-top');
+  const home=ceo?document.querySelector('#stc-zunara-summary'):(document.querySelector('#btn-mi-perfil-coach')||document.querySelector('#loc-metricas'));if(!home)return;
+  const b=document.createElement('button');b.id='stc-trial-access';b.className='rl-nav';b.type='button';b.innerHTML='<span class="rl-ico">◷</span><span class="rl-t"><small>Zunara · clases de prueba</small><b>'+ (managers.includes(profile.role)?'Pruebas y seguimiento del gimnasio':'Mis clases de prueba')+'</b><em>Contacto, asistencia y próximos prospectos</em></span>';b.onclick=open;home.insertAdjacentElement(ceo?'beforebegin':'afterend',b);
  }
  const observer=new MutationObserver(mount);observer.observe(root(),{childList:true,subtree:true});mount();
  function localMonthOf(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
