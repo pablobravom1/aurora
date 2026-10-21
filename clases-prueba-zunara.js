@@ -11,7 +11,7 @@
  async function open(){
   if(!allowed())return;
   const seq=++generation;month=month||localMonth();
-  root().innerHTML=`<section class="stc-trial" id="stc-trial-panel"><div class="header-actions"><button class="switch-user" id="tr-back">← Volver</button></div><small>COMERCIAL · FUENTE ZUNARA</small><h1>${managers.includes(profile.role)?'Clases de prueba del gimnasio':'Mis clases de prueba'}</h1><p class="tr-source">La asignación la elige el vendedor en Zunara. Contacto y asistencia se guardan por separado. Esta fuente no se suma al Excel.</p><div class="tr-toolbar"><label>Mes <input type="month" id="tr-month" value="${esc(month)}"></label><button class="btn-sm" id="tr-refresh">Actualizar</button><button class="btn-sm" id="tr-today">Solo hoy</button><button class="btn-sm" id="tr-all">Todo el mes</button></div><div id="tr-content" class="loading">Cargando clases…</div>${profile.role==='super_admin'?'<details class="card" style="margin-top:18px"><summary>Conectar con Zunara · administrador</summary><p class="tr-source">Genera en Zunara un código de conexión para STC App y pégalo aquí. No ingreses contraseñas ni secretos.</p><form id="tr-pair"><input name="code" required pattern="[0-9a-fA-F]{12}" maxlength="12" placeholder="Código de 12 caracteres" autocomplete="off"><button class="btn-sm" type="submit">Conectar</button></form><p id="tr-pair-status" role="status"></p></details>':''}</section>`;
+  root().innerHTML=`<section class="stc-trial" id="stc-trial-panel"><div class="header-actions"><button class="switch-user" id="tr-back">← Volver</button></div><small>COMERCIAL · FUENTE ZUNARA</small><h1>${managers.includes(profile.role)?'Clases de prueba del gimnasio':'Mis clases de prueba'}</h1><p class="tr-source">La asignación la elige el vendedor en Zunara. Contacto y asistencia se guardan por separado. Esta fuente no se suma al Excel.</p><div class="tr-toolbar"><label>Mes <input type="month" id="tr-month" value="${esc(month)}"></label><button class="btn-sm" id="tr-refresh">Actualizar</button><button class="btn-sm" id="tr-today">Solo hoy</button><button class="btn-sm" id="tr-all">Todo el mes</button></div><div id="tr-content" class="loading">Cargando clases…</div><p class="tr-source" id="tr-connection-status" role="status">Comprobando conexión guardada…</p></section>`;
   document.querySelector('#tr-back').onclick=()=>{generation++;renderCoachHome();};
   document.querySelector('#tr-refresh').onclick=open;
   const modeBar=document.createElement('div');modeBar.className='tr-toolbar';modeBar.style.marginTop='12px';modeBar.innerHTML='<button class="btn-sm" id="tr-calendar">Vista C · Calendario</button><button class="btn-sm" id="tr-list">Lista</button>';document.querySelector('.tr-toolbar').insertAdjacentElement('afterend',modeBar);
@@ -19,13 +19,17 @@
   document.querySelector('#tr-month').onchange=e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){month=e.target.value;anchor=new Date(month+'-01T12:00:00');selected='';open();}};
   document.querySelector('#tr-today').onclick=()=>{mode='list';paint(true);};
   document.querySelector('#tr-all').onclick=()=>{mode='list';open();};
-  document.querySelector('#tr-pair')?.addEventListener('submit',async e=>{e.preventDefault();const button=e.target.querySelector('button'),output=document.querySelector('#tr-pair-status');button.disabled=true;output.textContent='Conectando…';try{const r=await sb.functions.invoke('stc-zunara-connect',{body:{code:new FormData(e.target).get('code')}});if(r.error||!r.data?.ok)throw Error(r.data?.error||r.error?.message||'No se pudo conectar');output.textContent='Conexión registrada. El directorio de profesores está en cola de envío.';e.target.reset();}catch(err){output.textContent=err.message;}finally{button.disabled=false;}});
+  loadConnection(seq);
   try{
    const start=mode==='calendar'?window.STCCalendarioPruebas.monday(anchor):new Date(month+'-01T00:00:00'),end=new Date(start);if(mode==='calendar')end.setDate(end.getDate()+7);else end.setMonth(end.getMonth()+1);
    const r=await sb.rpc('stc_trial_list',{range_start:start.toISOString(),range_end:end.toISOString()});
    if(seq!==generation||!document.querySelector('#tr-content'))return;
    if(r.error)throw r.error;rows=r.data||[];paint(false);
   }catch(e){if(seq===generation&&document.querySelector('#tr-content'))document.querySelector('#tr-content').innerHTML=`<div class="error-banner">No se pudieron cargar las clases: ${esc(e.message)}. Si el módulo aún no está instalado, no aparecerán datos ficticios.</div>`;}
+ }
+ async function loadConnection(seq){
+  try{const r=await sb.rpc('stc_zunara_status');if(seq!==generation)return;const el=document.querySelector('#tr-connection-status');if(!el)return;if(r.error||typeof r.data?.active!=='boolean')throw Error('Estado no disponible');el.textContent=r.data.active?'✓ Conexión permanente activa · no requiere códigos ni reconexión al iniciar sesión.':'No hay una conexión activa registrada. Contacta al administrador; no necesitas ingresar códigos aquí.';}
+  catch{if(seq===generation){const el=document.querySelector('#tr-connection-status');if(el)el.textContent='No se pudo comprobar la conexión ahora. Esto no significa que se haya desconectado.';}}
  }
  function paint(today){
   const container=document.querySelector('#tr-content');if(!container)return;
