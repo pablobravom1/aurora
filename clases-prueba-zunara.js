@@ -58,7 +58,7 @@
  }
  function mountSummary(){
   if(!profile||!managers.includes(profile.role))return;
-  const sources=document.querySelector('#cx-cuerpo > .cx-fu');if(!sources||document.querySelector('#stc-zunara-summary'))return;
+  const sources=document.querySelector('#cx-cuerpo [aria-label="Scorecard de coaches"]')?.closest('.cx-grid');if(!sources||document.querySelector('#stc-zunara-summary'))return;
   const box=document.createElement('article');box.id='stc-zunara-summary';box.className='card stc-trial';box.style.padding='18px';sources.insertAdjacentElement('beforebegin',box);loadSummary(box);
   document.querySelector('#cx-mes')?.addEventListener('change',()=>loadSummary(box));
  }
