@@ -384,8 +384,11 @@ function conectarSonidoBtn(){
 function rutinaCreadaPorAlumno(rutina){
   return !!rutina && rutina.origen === 'alumno';
 }
+// El alumno solo puede cambiar una rutina que él mismo creó.
+// El plan del profesor se ve y se usa para registrar el entrenamiento, pero no se edita.
+// La base repite esta regla (políticas rutinas_alumno_no_altera_plan_*).
 function alumnoPuedeEditarRutina(rutina){
-  return false;
+  return !!profile && profile.role === 'alumno' && rutinaCreadaPorAlumno(rutina) && rutina.creada_por === profile.id;
 }
 function routineOriginBadge(rutina, vistaAlumno){
   const propia = rutinaCreadaPorAlumno(rutina);
@@ -6663,7 +6666,7 @@ async function renderMiPerfil(abrirEdicion){
       <div class="profile-upload-note"><b>¿Qué significa?</b> Es un apodo único para encontrarte sin mostrar tu correo. Puedes cambiarlo por algo fácil, por ejemplo: <b>pablo.bravo</b>.</div>
       <label>Una frase sobre ti (opcional)</label>
       <textarea id="profile-bio" maxlength="160" placeholder="Ej: entrenando para ser más fuerte cada semana">${escapeHtml(profile.bio || '')}</textarea>
-      <label class="privacy-switch"><input type="checkbox" id="profile-share-history" ${profile.compartir_historial !== false ? 'checked' : ''}><span><b>Compartir mis entrenamientos</b><small>Solo los compañeros que tú aceptes podrán ver tu historial, rutinas y fotos. Nunca podrán editarlo.</small></span></label>
+      <label class="privacy-switch"><input type="checkbox" id="profile-share-history" ${profile.compartir_historial === true ? 'checked' : ''}><span><b>Compartir mi historial con compañeros</b><small>Viene apagado. Si lo enciendes, solo los compañeros que tú aceptes verán tus entrenamientos, tus rutinas personales y las fotos de esas sesiones. No ven mediciones, entrevista ni otros datos, y no pueden editar nada. Puedes apagarlo cuando quieras.</small></span></label>
       <button type="button" class="btn" id="btn-save-profile">Guardar perfil</button>
     </div>` : '<div class="profile-upload-note" style="text-align:center;">Tu foto o avatar también aparecerá en los chats con tus alumnos.</div>'}
     ${profile.role !== 'super_admin' ? '<div class="card push-perfil-card" id="push-perfil-holder"></div>' : ''}`;
@@ -6778,7 +6781,7 @@ async function renderSocialHub(){
   root().innerHTML = `
     <div class="row-flex page-heading"><div><button type="button" class="back-link" id="btn-social-back">${ICONS.arrowLeft} Volver</button><h1>Compañeros</h1><div class="sub">Tu comunidad de entrenamiento</div></div>${renderProfileAvatar(profile,'avatar-header-small')}</div>
     <section class="social-search-card">
-      <div class="social-search-title">${ICONS.search}<div><b>Encuentra un compañero</b><small>Busca por nombre o por su @usuario. Tu correo siempre permanece privado.</small></div></div>
+      <div class="social-search-title">${ICONS.search}<div><b>Encuentra un compañero</b><small>Busca por nombre o por su @usuario. Solo verás nombre, usuario y foto. El correo y el resto de la ficha quedan privados.</small></div></div>
       <div class="social-search-row"><input id="social-search-input" placeholder="Nombre o @usuario" autocomplete="off"><button type="button" class="btn-sm" id="btn-social-search">Buscar</button></div>
       <div id="social-search-results"></div>
     </section>
@@ -6823,7 +6826,8 @@ async function searchSocialUsers(){
     let action = `<button type="button" class="btn-sm" onclick="sendFriendRequest('${person.id}')">Agregar</button>`;
     if(person.estado === 'aceptada') action = `<button type="button" class="btn-ghost compact" onclick="renderFriendProfile('${person.id}')">Ver perfil</button>`;
     if(person.estado === 'pendiente') action = `<span class="request-pending">${person.yo_solicite ? 'Solicitud enviada' : 'Te envió una solicitud'}</span>`;
-    return `<div class="social-person-card search-result">${renderProfileAvatar(person,'avatar-list')}<div class="social-person-copy"><b>${escapeHtml(person.nombre)}</b><small>Usuario: @${escapeHtml(person.username || '')}</small></div><div class="social-card-actions">${action}</div></div>`;
+    const tarjeta = { nombre: person.nombre, username: person.username, avatar_key: person.avatar_key, foto_perfil_url: person.foto_perfil_url };
+    return `<div class="social-person-card search-result">${renderProfileAvatar(tarjeta,'avatar-list')}<div class="social-person-copy"><b>${escapeHtml(tarjeta.nombre)}</b><small>Usuario: @${escapeHtml(tarjeta.username || '')}</small></div><div class="social-card-actions">${action}</div></div>`;
   }).join('') : '<div class="empty">No encontramos alumnos con ese nombre.</div>';
 }
 
@@ -6868,7 +6872,7 @@ async function renderFriendProfile(friendId){
       <button type="button" class="btn-sm" id="btn-chat-friend">${ICONS.message} Mensaje</button>
     </section>
     ${friend.bio ? `<div class="card friend-bio">${escapeHtml(friend.bio)}</div>` : ''}
-    ${!friend.compartir_historial ? `<div class="card privacy-closed">🔒 ${escapeHtml(friend.nombre.split(' ')[0])} mantiene sus entrenamientos privados.</div>` : `
+    ${!friend.compartir_historial ? `<div class="card privacy-closed">🔒 ${escapeHtml(friend.nombre.split(' ')[0])} mantiene sus entrenamientos en privado. Ser compañeros no los abre: solo esa persona puede encender el compartir desde su perfil.</div>` : `
       <button type="button" class="btn-toggle-rutina section-history history-primary" id="btn-friend-history"><span class="history-primary-copy"><span class="toggle-label">${ICONS.book} Entrenamientos</span><small>${sesiones.length === 1 ? '1 sesión reciente' : `${sesiones.length} sesiones recientes`} · solo lectura</small></span>${toggleStateHtml('Abrir')}</button>
       <div class="hidden" id="friend-history-holder">${renderFriendSessions(sesiones)}</div>
       ${rutinasPropias.length ? `<button type="button" class="btn-toggle-rutina section-routine" id="btn-friend-routine"><span class="toggle-label">${ICONS.clipboard} Rutinas personales (${rutinasPropias.length})</span>${toggleStateHtml()}</button><div class="hidden" id="friend-routine-holder">${renderFriendOwnRoutines(rutinasPropias, friend)}</div>` : `<div class="card privacy-closed">${escapeHtml(friend.nombre.split(' ')[0])} todavía no ha creado rutinas personales para compartir.</div>`}
