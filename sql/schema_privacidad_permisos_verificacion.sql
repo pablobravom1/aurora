@@ -21,6 +21,7 @@ DECLARE
   rutina_profe uuid;
   rutina_propia uuid;
   sesion_b uuid;
+  sesion_a uuid;
   medicion_b uuid;
   n int;
   bio_leida text;
@@ -171,21 +172,21 @@ BEGIN
       NULL;
     END;
 
-    -- Sí puede crear y corregir la suya, y registrar una sesión contra su propio id.
+    -- STC: el alumno NO tiene política para crear rutinas propias (ni antes ni
+    -- después de esta migración; en UltraCarga sí). Se informa, no es fallo.
     BEGIN
       INSERT INTO public.rutinas (alumno_id, nombre, origen, creada_por, activa)
       VALUES (alumno_a, marker || '-mia', 'alumno', alumno_a, false);
-      UPDATE public.rutinas
-         SET nombre = marker || '-mia-edit'
-       WHERE alumno_id = alumno_a AND nombre = marker || '-mia';
-      GET DIAGNOSTICS n = ROW_COUNT;
-      IF n <> 1 THEN fallos := fallos + 1; notas := notas || ' | A no pudo editar su rutina personal.'; END IF;
+      notas := notas || ' | (info) A puede crear rutina personal.';
     EXCEPTION WHEN insufficient_privilege THEN
-      fallos := fallos + 1; notas := notas || ' | A no pudo crear su rutina personal.';
+      notas := notas || ' | (info) STC: el alumno no crea rutinas propias, igual que antes.';
     END;
 
+    -- Registra su entrenamiento: sesión propia + serie.
+
     BEGIN
-      INSERT INTO public.sesiones (alumno_id, foto_url) VALUES (alumno_a, marker || '-sesion-a');
+      INSERT INTO public.sesiones (alumno_id, foto_url) VALUES (alumno_a, marker || '-sesion-a') RETURNING id INTO sesion_a;
+      INSERT INTO public.sesion_series (sesion_id, ejercicio_nombre, peso, reps, orden) VALUES (sesion_a, marker || '-serie', 10, 10, 1);
       INSERT INTO public.mediciones (alumno_id, foto_url) VALUES (alumno_a, marker || '-medicion-a');
     EXCEPTION WHEN insufficient_privilege THEN
       fallos := fallos + 1; notas := notas || ' | A no pudo registrar sesión o medición propia.';
