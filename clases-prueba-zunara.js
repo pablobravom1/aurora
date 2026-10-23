@@ -2,6 +2,24 @@
 (function(){
  'use strict';
  const esc=v=>escapeHtml(String(v??''));
+ // Contact shortcuts are plain links: they never call stc_trial_action or mark contact.
+ function phoneNumber(value){
+  if(typeof value!=='string'&&typeof value!=='number')return null;
+  const raw=String(value).trim();if(!raw||!/^[+\d\s().-]+$/.test(raw))return null;
+  let number=raw.replace(/[\s().-]/g,'');if(number.startsWith('00'))number='+'+number.slice(2);
+  if(!/^\+?[1-9]\d{7,14}$/.test(number))return null;
+  const explicit=number.startsWith('+');let digits=number.replace(/^\+/,'');
+  if(!explicit&&/^[2-9]\d{8}$/.test(digits))digits='56'+digits;
+  else if(!explicit&&digits.length<10)return null;
+  if(digits.startsWith('56')&&!/^56[2-9]\d{8}$/.test(digits))return null;
+  return digits;
+ }
+ function contactHtml(trial){
+  if(!Object.prototype.hasOwnProperty.call(trial,'phone'))return '<p class="tr-contact-missing">Datos de contacto no disponibles para este perfil.</p>';
+  const phone=phoneNumber(trial.phone);
+  if(!phone)return '<p class="tr-contact-missing">'+(String(trial.phone??'').trim()?'Teléfono no válido · revisa el número en Zunara.':'Sin teléfono registrado · puedes completarlo en Zunara.')+'</p>';
+  return `<div class="tr-contact-actions" role="group" aria-label="Contactar a ${esc(trial.person_name)}"><a class="tr-call" href="tel:+${phone}" aria-label="Llamar a ${esc(trial.person_name)}"><span aria-hidden="true">☎</span> Llamar</a><a class="tr-whatsapp" href="https://wa.me/${phone}" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp de ${esc(trial.person_name)}"><span aria-hidden="true">◉</span> WhatsApp</a></div><p class="tr-contact-note">WhatsApp abre el chat; desde ahí puedes llamar. Contactado se marca manualmente.</p>`;
+ }
  const managers=['super_admin','responsable_sede','jso','ceo','loc'];
  const allowed=()=>profile&&[...managers,'profesor','coach'].includes(profile.role);
  let rows=[],month='',generation=0,mode='list',anchor=new Date(),selected='',onlyToday=false;
@@ -9,6 +27,7 @@
  const labels={pending:'Pendiente',contacted:'Contactado',no_answer:'No respondió',attended:'Asistió',no_show:'No asistió',cancelled:'Cancelada'};
  const css=document.createElement('style');css.textContent=`.stc-trial{padding-bottom:30px}.stc-trial h1{font-size:26px}.stc-trial .tr-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.tr-kpis>div{padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}.tr-kpis strong{display:block;font-size:25px;color:var(--blue)}.tr-kpis small{color:var(--chalk-dim)}.tr-item{padding:18px;margin:12px 0;border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:14px;background:var(--surface)}.tr-item h2{font-size:19px;margin:0 0 8px}.tr-item p{color:var(--chalk-dim);font-size:12px}.tr-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.tr-controls label{flex:1;min-width:120px;font-size:12px}.tr-controls select{margin:5px 0}.tr-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tr-toolbar input{width:150px;margin:0}.tr-source{font-size:12px;color:var(--chalk-dim);line-height:1.6}@media(max-width:600px){.stc-trial .tr-kpis{grid-template-columns:1fr 1fr}.tr-item{padding:14px}}`;document.head.append(css);
  css.textContent+=`.tr-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0}.tr-steps button{min-height:98px;padding:12px 5px;border:1px solid var(--line,#444);border-radius:14px;background:var(--surface,#202020);color:var(--chalk,#fff);font-size:12px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer}.tr-steps button>span{font-size:22px}.tr-steps button small{font-size:10px;font-weight:400;opacity:.7}.tr-steps button[aria-pressed=true]{color:var(--blue,#e0ff39);border-color:var(--blue,#e0ff39);background:rgba(210,240,40,.08)}.tr-steps button:disabled{opacity:.4;cursor:not-allowed}.tr-steps button[aria-pressed=true]:disabled{opacity:1}.tr-secondary{display:flex;flex-wrap:wrap;gap:8px;padding-top:12px}.tr-corrections summary{cursor:pointer;color:var(--chalk-dim,#aaa);font-size:12px;padding:10px 0}.tr-save-status{min-height:20px}.tr-steps button:focus-visible{outline:2px solid var(--blue,#e0ff39);outline-offset:3px}`;
+ css.textContent+=`.tr-contact-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0 6px}.tr-contact-actions a{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 12px;border:1px solid var(--line,#556);border-radius:12px;text-decoration:none;background:var(--surface,#202020);color:var(--chalk,#fff);font:650 14px Inter,system-ui,sans-serif;box-sizing:border-box}.tr-contact-actions a>span{font-size:19px}.tr-contact-actions .tr-whatsapp{background:#25d36615;border-color:#25d36677;color:#77eba1}.tr-contact-actions a:hover{filter:brightness(1.15)}.tr-contact-actions a:focus-visible{outline:3px solid var(--blue,#e0ff39);outline-offset:3px}.tr-item .tr-contact-note,.tr-item .tr-contact-missing{font-size:11px;line-height:1.6;margin:7px 0 12px}.tr-contact-missing{padding:9px 11px;border:1px dashed var(--line,#556);border-radius:10px}`;
  async function open(){
   if(!allowed())return;
   const seq=++generation;month=month||localMonth();
@@ -47,6 +66,13 @@
    const wrap=document.createElement('div');wrap.innerHTML=window.STCCalendarioPruebas.html(rows,anchor);container.prepend(wrap);
    window.STCCalendarioPruebas.bind({anchor,onDate:d=>{anchor=d;month=localMonthOf(d);selected='';open();},onPick:id=>{selected=id;paint(false);document.querySelector('.tr-item')?.scrollIntoView({behavior:'smooth',block:'nearest'});},onZoom:()=>paint(false)});
   }
+  container.querySelectorAll('[data-trial]').forEach(card=>{
+   const trial=rows.find(row=>row.id===card.dataset.trial);if(!trial)return;
+   const contact=document.createElement('div');contact.className='tr-contact';contact.innerHTML=contactHtml(trial);
+   const info=Array.from(card.children).filter(el=>el.tagName==='P');
+   const after=info.find(el=>el.textContent.startsWith('Teléfono:'))||info[1];
+   if(after)after.insertAdjacentElement('afterend',contact);else card.append(contact);
+  });
   container.querySelectorAll('[data-action]').forEach(button=>button.addEventListener('click',async()=>{
    const card=button.closest('[data-trial]'),t=rows.find(t=>t.id===card.dataset.trial),output=card.querySelector('[role="status"]');
    if(button.getAttribute('aria-pressed')==='true')return;
@@ -79,5 +105,5 @@
  }
  const observer=new MutationObserver(mount);observer.observe(root(),{childList:true,subtree:true});mount();
  function localMonthOf(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
- window.STCPruebasZunara={abrir:open};
+ window.STCPruebasZunara={abrir:open,phoneNumber,contactHtml};
 })();
