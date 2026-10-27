@@ -100,6 +100,12 @@ const EXERCISE_BANK = [
   ,{ name:'Zancada con salto con landmine', aliases:['zancadas con salto con landmine','zancada alternada con salto con landmine','zancada con salto landmine','landmine split squat jump','landmine alternating split squat jump'], group:'Piernas', image:'zancada-salto-landmine.webp', youtubeUrl:'' }
   ,{ name:'Skipping lateral', aliases:['skipping de lado','skip lateral','lateral skip','lateral skipping','skipping sideways'], group:'Funcional', image:'skipping-lateral.webp', youtubeUrl:'' }
   ,{ name:'Press Pallof', aliases:['press palof','press pallof','pallof press','palof press','press pallof en polea','press antirotación','press antirotacion'], group:'Core', image:'press-pallof.webp', youtubeUrl:'' }
+  ,{"name":"Elevación de piernas en el suelo","aliases":["elevacion de piernas acostado","elevacion de piernas en suelo","abdominal piernas en el suelo","lying leg raise"],"group":"Core","image":"elevacion-piernas-suelo.webp","youtubeUrl":""}
+  ,{"name":"Giro ruso","aliases":["giros rusos","russian twist","rotacion para oblicuos sentado","rotacion de oblicuos sentado"],"group":"Core","image":"giro-ruso.webp","youtubeUrl":""}
+  ,{"name":"Rotación de tronco en polea","aliases":["rotacion para oblicuos en polea","rotacion de oblicuos en polea","rotacion en polea de pie","cable torso rotation"],"group":"Core","image":"rotacion-tronco-polea.webp","youtubeUrl":""}
+  ,{"name":"Battle rope","aliases":["battle ropes","battle-rope","cuerdas de batalla","cuerda de batalla","ondas con cuerdas"],"group":"Funcional","image":"battle-rope.webp","youtubeUrl":""}
+  ,{"name":"Sentadilla en BOSU","aliases":["sentadilla bosu","sentadillas en bosu","bosu squat"],"group":"Piernas","image":"sentadilla-bosu.webp","youtubeUrl":""}
+  ,{"name":"Elevación de cadera en el suelo","aliases":["elevacion de cadera","puente de gluteos en el suelo","puente de gluteo en suelo","puente de gluteos","glute bridge"],"group":"Glúteos","image":"elevacion-cadera-suelo.webp","youtubeUrl":""}
 ];
 
 function normalizeExerciseName(value){
