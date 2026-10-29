@@ -1,6 +1,6 @@
 // STC App — instalación, caché y notificaciones push.
 // No cachea datos de Supabase, solo el cascarón de la aplicación.
-const CACHE_NAME = 'stc-v16-ejercicios-20261026';
+const CACHE_NAME = 'stc-v17-dos-ceo-20261029';
 const APP_SHELL = [
   "./elevacion-piernas-suelo.webp", "./giro-ruso.webp", "./rotacion-tronco-polea.webp", "./battle-rope.webp", "./sentadilla-bosu.webp", "./elevacion-cadera-suelo.webp",
   './google-button-brand.js',

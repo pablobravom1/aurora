@@ -1,7 +1,7 @@
 // STC App — Perfil VENTAS: el trabajo diario de las vendedoras (clon de la parte comercial de MapFit,
 // con el estilo de la app y lo que hoy se anota aparte en Excel): leads por canal, prospectos,
 // agenda con confirmación, seguimiento de 5 contactos, ventas con lista de ingreso y dashboard.
-// También reconoce el perfil CEO (solo uno). Se carga AL FINAL, después de todos los demás módulos.
+// También reconoce el perfil CEO (hasta dos). Se carga AL FINAL, después de todos los demás módulos.
 (function(){
   'use strict';
   const esc = (s) => (typeof escapeHtml === 'function' ? escapeHtml(s == null ? '' : String(s)) : String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
@@ -676,7 +676,7 @@
     $id('vd-act').onclick = () => { cargarEquipo().then(pintarVista); };
   }
 
-  // ---------------------------------------------------------------- CEO (solo uno): por ahora una portada; el panel con los Excel viene después
+  // ---------------------------------------------------------------- CEO (hasta dos): por ahora una portada; el panel con los Excel viene después
   function renderCeoHome(){
     root().innerHTML = `<div class="vt">
       <div class="header-actions"><div class="coach-home-titulo"><small>PANEL CEO</small><b>Hola, ${esc(nombreCorto(profile.nombre))}</b></div><div class="student-header-actions"><button class="switch-user" id="btn-logout">${IC('logout')} Salir</button></div></div>
@@ -728,7 +728,7 @@
       sel.dataset.vt = '1';
       const fila = sel.closest('.rl-perfil'), etiqueta = (fila && fila.querySelector('.n small') || {}).textContent || '';
       const op = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); return o; };
-      const ov = op('ventas', 'Ventas'), oc = op('ceo', 'CEO (solo uno)');
+      const ov = op('ventas', 'Ventas'), oc = op('ceo', 'CEO (hasta dos)');
       if(etiqueta === 'Ventas') ov.selected = true;
       if(etiqueta === 'CEO') oc.selected = true;
     });
