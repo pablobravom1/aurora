@@ -1442,7 +1442,7 @@ function plFilaLimpia(e){
     descanso_seg: e.descanso_seg ?? null, imagen_url: e.imagen_url ?? null, orden: e.orden ?? null,
     dia_nombre: e.dia_nombre ?? null, dia_orden: e.dia_orden ?? null, peso_objetivo: e.peso_objetivo ?? null,
     nota: e.nota ?? null, tipo_serie_objetivo: e.tipo_serie_objetivo ?? null, lado_objetivo: e.lado_objetivo ?? null,
-    unidad_objetivo: e.unidad_objetivo ?? null, circuito: e.circuito ?? null
+    unidad_objetivo: e.unidad_objetivo ?? null, circuito: e.circuito ?? null, series_plan: UCCargas.clonar(UCCargas.plan(e)), superserie_id: e.superserie_id || null
   };
 }
 async function crearPlantillaDesde(nombre, objetivo, filas){
@@ -1831,6 +1831,7 @@ function valorSerieTexto(set){
 // Objetivo de la rutina: "3 × 12" o "3 × 45 s ⏱"
 function objetivoTexto(o){
   if(!o) return '';
+  if(UCCargas.plan(o)) return UCCargas.resumen(o);
   if(o.circuito) return fxTrabajoTexto(o, fxNormalizar(o.circuito));
   const series = o.series_objetivo || '-';
   if(esSeg(o.unidad_objetivo)) return `${series} × ${o.reps_objetivo ? `${o.reps_objetivo} s` : '-'} ⏱`;
@@ -1838,10 +1839,10 @@ function objetivoTexto(o){
 }
 function renderExMeta(ex){
   const sxr = escapeHtml(objetivoTexto(ex));
-  const peso = ex.peso_objetivo ? `<span class="pill" style="padding:2px 8px; font-size:10.5px;">${escapeHtml(ex.peso_objetivo)}</span>` : '';
+  const peso = ex.peso_objetivo && !UCCargas.plan(ex) ? `<span class="pill" style="padding:2px 8px; font-size:10.5px;">${UCCargas.textoHtml(ex.peso_objetivo)}</span>` : '';
   const descanso = ex.descanso_seg && !ex.circuito ? `<span class="routine-rest-pill">⏱ ${Number(ex.descanso_seg)}s descanso</span>` : '';
   const tipoLado = renderTipoLadoPills(ex.tipo_serie_objetivo, ex.lado_objetivo);
-  return `<span style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;"><b>${sxr}</b>${peso}${descanso}${tipoLado}</span>`;
+  return `<span style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;"><b>${sxr}</b>${peso}${descanso}${tipoLado}</span>${UCCargas.tabla(ex)}`;
 }
 function renderExNota(ex){
   return ex.nota ? `<div class="ex-nota">📝 ${escapeHtml(ex.nota)}</div>` : '';
@@ -1882,7 +1883,7 @@ function renderExerciseThumbnail(ex){
   const jsImage = entry.image.replace(/'/g, "\\'");
   return `<button type="button" class="routine-exercise-thumb" onclick="openExerciseImage('${jsImage}','${jsName}')" aria-label="Ampliar referencia técnica de ${safeName}"><img src="${escapeHtml(entry.image)}" alt="Referencia técnica de ${safeName}" loading="lazy"></button>`;
 }
-function renderRoutineExercise(ex, index){
+function renderRoutineExercise(ex, index, lista){
   return `
     <div class="routine-exercise-row">
       <div class="routine-exercise-index">${String(index + 1).padStart(2,'0')}</div>
@@ -1892,22 +1893,22 @@ function renderRoutineExercise(ex, index){
           <span class="routine-exercise-name">${escapeHtml(ex.nombre)}</span>
           ${renderExerciseVideoButton(ex)}
         </div>
-        <div class="routine-exercise-meta">${renderExMeta(ex)}</div>
+        <div class="routine-exercise-meta">${renderExMeta(ex)}</div>${STCSuperseries.etiqueta(ex,lista || [])}
         ${renderExNota(ex)}
       </div>
     </div>`;
 }
 function renderRoutineDays(dias){
-  return (dias || []).map((d, dayIndex) => `
+  return UCCargas.selector() + (dias || []).map((d, dayIndex) => `
     <section class="routine-day routine-day-${dayIndex % 4}">
       <div class="routine-day-header">
         <span class="routine-day-kicker">Día ${dayIndex + 1}</span>
         <span class="routine-day-title">${escapeHtml(d.nombre)}</span>
         <span class="routine-day-count">${d.ejercicios.length} ejercicio${d.ejercicios.length === 1 ? '' : 's'}</span>
       </div>
-      ${fxBannerHtml(d)}
+      ${fxBannerHtml(d)}${STCSuperseries.resumenDia(d)}
       <div class="routine-day-exercises">
-        ${d.ejercicios.map((ex, index) => renderRoutineExercise(ex, index)).join('')}
+        ${d.ejercicios.map((ex, index) => renderRoutineExercise(ex, index, d.ejercicios)).join('')}
       </div>
     </section>
   `).join('');
@@ -2813,7 +2814,7 @@ function renderSetLineHistorial(set, i, isCoachView){
     const pr = set._isPR ? prPillHtml() : '';
     const nota = set.nota ? `<span class="pill" style="padding:2px 8px; font-size:10.5px;">${escapeHtml(set.nota)}</span>` : '';
     const tipoLado = renderTipoLadoPills(set.tipo_serie, set.lado);
-    return `<div class="set-line">S${i+1}: <b>${valorSerieTexto(set)}</b> × <b>${set.peso}kg</b> ${nota} ${tipoLado} ${pr}</div>`;
+    return `<div class="set-line">S${i+1}: <b>${valorSerieTexto(set)}</b> × <b>${UCCargas.pesoHtml(set.peso)}</b> ${nota} ${tipoLado} ${pr}</div>`;
   }
   cacheSeriesHistorial[set.id] = {
     reps: set.reps, peso: set.peso, unidad: set.unidad || 'reps', nota: set.nota || '',
@@ -2830,7 +2831,7 @@ function lineaSerieVista(setId){
   const nota = s.nota ? `<span class="pill" style="padding:2px 8px; font-size:10.5px;">${escapeHtml(s.nota)}</span>` : '';
   const tipoLado = renderTipoLadoPills(s.tipo_serie, s.lado);
   return `
-    <span>S${s.i+1}: <b>${valorSerieTexto(s)}</b> × <b>${s.peso}kg</b> ${nota} ${tipoLado} ${pr}</span>
+    <span>S${s.i+1}: <b>${valorSerieTexto(s)}</b> × <b>${UCCargas.pesoHtml(s.peso)}</b> ${nota} ${tipoLado} ${pr}</span>
     <button type="button" class="link-btn" onclick="mostrarEditorSerieHistorial('${setId}')">Editar</button>
   `;
 }
@@ -2844,8 +2845,8 @@ function mostrarEditorSerieHistorial(setId){
       <span style="white-space:nowrap;">S${s.i+1}:</span>
       <input type="number" id="edit-reps-${setId}" value="${s.reps}" placeholder="Reps" style="width:60px; margin:0; padding:4px 6px; font-size:11.5px;">
       <span style="white-space:nowrap;">reps ×</span>
-      <input type="number" id="edit-peso-${setId}" value="${s.peso}" placeholder="Peso" style="width:60px; margin:0; padding:4px 6px; font-size:11.5px;">
-      <span style="white-space:nowrap;">kg</span>
+      <input type="number" data-uc-peso-input="numero" min="0" step="any" id="edit-peso-${setId}" value="${UCCargas.valor(s.peso)}" placeholder="Peso" style="width:60px; margin:0; padding:4px 6px; font-size:11.5px;">
+      <span style="white-space:nowrap;" data-uc-unidad>${UCCargas.unidad().toUpperCase()}</span>
       <input type="text" id="edit-nota-${setId}" value="${escapeHtml(s.nota)}" placeholder="Nota (opcional)" style="flex:1; min-width:110px; margin:0; padding:4px 6px; font-size:11.5px;">
       <button type="button" class="link-btn" onclick="guardarSerieHistorial('${setId}')">Guardar</button>
       <button type="button" class="link-btn" onclick="cancelarEdicionSerieHistorial('${setId}')">Cancelar</button>
@@ -2865,7 +2866,9 @@ async function guardarSerieHistorial(setId){
   const pesoEl = document.getElementById(`edit-peso-${setId}`);
   const notaEl = document.getElementById(`edit-nota-${setId}`);
   const reps = repsEl ? repsEl.value : '';
-  const peso = pesoEl ? pesoEl.value : '';
+  const pesoEntrada = pesoEl ? pesoEl.value : '';
+  const peso = UCCargas.aKg(pesoEntrada);
+  if(pesoEntrada !== '' && (peso == null || peso > 10000)){ showToast('Revisa el peso: debe ser un número positivo válido'); return; }
   const nota = notaEl ? notaEl.value.trim() : '';
   if(!reps){ showToast('Completa las repeticiones'); return; }
 
@@ -2924,7 +2927,7 @@ function mostrarFormAgregarEjercicioHistorial(sesionId){
       ${simpleExerciseBankHtml(`hist-ex-nombre-${sesionId}`, '')}
       <div class="set-input-row">
         <div><input type="number" id="hist-ex-reps-${sesionId}" placeholder="Reps" style="margin-bottom:0;"></div>
-        <div><input type="number" id="hist-ex-peso-${sesionId}" placeholder="Peso kg" style="margin-bottom:0;"></div>
+        <div><input type="number" data-uc-peso-input="numero" min="0" step="any" id="hist-ex-peso-${sesionId}" placeholder="Peso ${UCCargas.unidad()}" aria-label="Peso ${UCCargas.unidad()}" style="margin-bottom:0;"></div>
         <div><button type="button" class="btn-sm" style="width:100%;" onclick="guardarEjercicioHistorial('${sesionId}')">Guardar</button></div>
       </div>
       <input type="text" id="hist-ex-nota-${sesionId}" placeholder="Nota de esta serie (opcional)" style="margin-top:8px; margin-bottom:0;">
@@ -2952,7 +2955,9 @@ async function guardarEjercicioHistorial(sesionId){
   const ladoEl = document.getElementById(`hist-ex-lado-${sesionId}`);
   const nombre = nombreEl ? nombreEl.value.trim() : '';
   const reps = repsEl ? repsEl.value : '';
-  const peso = pesoEl ? pesoEl.value : '';
+  const pesoEntrada = pesoEl ? pesoEl.value : '';
+  const peso = UCCargas.aKg(pesoEntrada);
+  if(pesoEntrada !== '' && (peso==null || peso>10000)){ showToast('Revisa el peso'); return; }
   const nota = notaEl ? notaEl.value.trim() : '';
   const tipo_serie = tipoSerieEl ? tipoSerieEl.value : '';
   const lado = ladoEl ? ladoEl.value : '';
@@ -3709,8 +3714,8 @@ function setupProgresoChart(sesiones){
       data: {
         labels: datos.registros.map(p => formatDateShort(p.fecha)),
         datasets: [{
-          label: 'Peso máximo (kg)',
-          data: datos.registros.map(p => p.peso),
+          label: 'Peso máximo ('+UCCargas.unidad()+')',
+          data: datos.registros.map(p => UCCargas.deKg(p.peso)),
           borderColor: '#FFFF66',
           backgroundColor: areaFill,
           borderWidth: 3,
@@ -3742,14 +3747,14 @@ function setupProgresoChart(sesiones){
     const item = itemSeleccionado();
     seleccionado = item.name;
     const datos = progresoDatosEjercicio(sesiones, item.name);
-    selectedHolder.innerHTML = `
+    selectedHolder.innerHTML = UCCargas.selector() + `
       <div class="progress-selected-media">${item.image ? `<img src="${escapeHtml(item.image)}" alt="Referencia de ${escapeHtml(item.name)}">` : '<span aria-hidden="true">UC</span>'}</div>
       <div class="progress-selected-copy">
         <small>Ejercicio seleccionado · ${escapeHtml(item.group)}</small>
         <h3>${escapeHtml(item.name)}</h3>
         <div class="progress-selected-metrics">
-          <span><b>${datos.ultimo ? `${datos.ultimo.toLocaleString('es-CL', { maximumFractionDigits:1 })} kg` : '—'}</b><small>Último</small></span>
-          <span><b>${datos.mejor ? `${datos.mejor.toLocaleString('es-CL', { maximumFractionDigits:1 })} kg` : '—'}</b><small>Mejor marca</small></span>
+          <span><b>${datos.ultimo ? UCCargas.pesoHtml(datos.ultimo) : '—'}</b><small>Último</small></span>
+          <span><b>${datos.mejor ? UCCargas.pesoHtml(datos.mejor) : '—'}</b><small>Mejor marca</small></span>
           <span><b>${datos.registros.length}</b><small>Sesiones</small></span>
         </div>
       </div>`;
@@ -3764,6 +3769,9 @@ function setupProgresoChart(sesiones){
     dibujarGraficoProgreso(datos);
   };
 
+  if(window._ucCargasProgreso) document.removeEventListener('uc-unidad-peso',window._ucCargasProgreso);
+  window._ucCargasProgreso=()=>{if(canvas.isConnected)renderEjercicio();};
+  document.addEventListener('uc-unidad-peso',window._ucCargasProgreso);
   search.oninput = renderBanco;
   toggle.onclick = () => { bancoCompleto = !bancoCompleto; renderBanco(); };
   renderFiltros();
@@ -3823,6 +3831,7 @@ function renderNuevaSesionForm(){
   const diaSeleccionadoObj = activeRutinaDias.find(d => d.nombre === activeSesionDia);
   const ejerciciosSugeridos = diaSeleccionadoObj ? diaSeleccionadoObj.ejercicios : [];
   activeEjerciciosSugeridos = ejerciciosSugeridos;
+  STCSuperseries.sincronizarSesion();
   if(!ejercicioAbierto && activeSesionExs.length) ejercicioAbierto = activeSesionExs[0].nombre;
 
   root().innerHTML = `
@@ -4034,11 +4043,11 @@ function renderProgresoDia(){
     const n = activeSesionExs.filter(g => g.sets.length).length;
     titulo = n ? `${n} ejercicio${n === 1 ? '' : 's'} hoy` : 'Empieza tu entrenamiento';
   }
-  el.innerHTML = `
+  el.innerHTML = UCCargas.selector() + `
     <div class="reg-prog">
       <div class="reg-prog-fila"><b>${titulo}</b><small>${detalle}</small></div>
       ${pct != null ? `<div class="reg-barra"><i style="width:${pct}%"></i></div>` : ''}
-      <div class="reg-prog-stats"><span><b>${series}</b> serie${series === 1 ? '' : 's'}</span><span><b>${regFormatoKg(kg)}</b> kg</span><span><b>${records}</b> ${records === 1 ? 'récord' : 'récords'} ${records ? '👑' : ''}</span></div>
+      <div class="reg-prog-stats"><span><b>${series}</b> serie${series === 1 ? '' : 's'}</span><span><b>${UCCargas.pesoHtml(kg)}</b></span><span><b>${records}</b> ${records === 1 ? 'récord' : 'récords'} ${records ? '👑' : ''}</span></div>
     </div>`;
 }
 
@@ -4069,7 +4078,7 @@ function renderDraftExercises(){
     if(!abierto){
       const mejor = ex.sets.reduce((b, st) => (Number(st.peso) || 0) > (Number(b && b.peso) || 0) ? st : b, null);
       const resumen = ex.sets.length
-        ? `${ex.sets.length}${nObj ? `/${nObj}` : ''} serie${ex.sets.length === 1 ? '' : 's'} · ${regFormatoKg(vol)} kg${mejor && Number(mejor.peso) ? ` · mejor ${mejor.peso} kg × ${esSeg(mejor.unidad) ? fmtSeg(mejor.reps) : mejor.reps}` : ''}${ex.sets.some(st => st._isPR) ? ' · 👑' : ''}`
+        ? `${ex.sets.length}${nObj ? `/${nObj}` : ''} serie${ex.sets.length === 1 ? '' : 's'} · ${UCCargas.pesoHtml(vol)}${mejor && Number(mejor.peso) ? ` · mejor ${UCCargas.pesoHtml(mejor.peso)} × ${esSeg(mejor.unidad) ? fmtSeg(mejor.reps) : mejor.reps}` : ''}${ex.sets.some(st => st._isPR) ? ' · 👑' : ''}`
         : (nObj ? `Objetivo ${escapeHtml(objetivoTexto(obj))} · toca para registrar` : 'Toca para registrar series');
       return `
       <div class="reg-mini ${hecho ? 'hecho' : ''} ${superserieModo && !parSuperserie ? 'seleccionable' : ''} ${esEsperando ? 'seleccionando' : ''}" id="reg-ex-${idx}" onclick="abrirEjercicioRegistro(${idx})">
@@ -4086,10 +4095,12 @@ function renderDraftExercises(){
     const nombreHtml = (superserieModo && !parSuperserie)
       ? `<span class="reg-ex-nombre ex-name-seleccionable${esEsperando ? ' seleccionando' : ''}" onclick="tocarEjercicioParaSuperserie(${idx})" title="Tocar para unir en superserie">${escapeHtml(ex.nombre)}</span>`
       : `<span class="reg-ex-nombre">${escapeHtml(ex.nombre)}</span>`;
-    const repsVal = ex.repsSugeridas != null ? ex.repsSugeridas
+    const indicada = UCCargas.siguiente(obj, ex.sets.length);
+    const repsVal = indicada && /^\d+$/.test(indicada.reps) ? indicada.reps : ex.repsSugeridas != null ? ex.repsSugeridas
       : (obj && /^\d+$/.test(String(obj.reps_objetivo || '').trim()) ? String(obj.reps_objetivo).trim()
       : (previo && previo.reps ? previo.reps : ''));
-    const pesoVal = ex.pesoSugerido != null ? ex.pesoSugerido : '';
+    const pesoBase = indicada ? indicada.peso_kg : (ex.pesoSugerido != null ? ex.pesoSugerido : (obj ? UCCargas.kgTexto(obj.peso_objetivo) : null));
+    const pesoVal = pesoBase == null ? '' : UCCargas.valor(pesoBase);
     if(!ex.unidad){
       const ultima = ex.sets.length ? ex.sets[ex.sets.length - 1] : null;
       ex.unidad = ultima && ultima.unidad ? ultima.unidad : ((obj && esSeg(obj.unidad_objetivo)) ? 'seg' : 'reps');
@@ -4103,9 +4114,10 @@ function renderDraftExercises(){
           ${nombreHtml}
           <div class="reg-tags">
             ${entry && entry.group ? `<span class="reg-tag">${escapeHtml(entry.group)}</span>` : ''}
-            ${obj ? `<span class="reg-tag obj">Objetivo ${escapeHtml(objetivoTexto(obj))}${obj.peso_objetivo ? ` · ${escapeHtml(obj.peso_objetivo)}` : ''}</span>` : `<span class="reg-tag extra">Extra</span>`}
+            ${obj ? `<span class="reg-tag obj">Objetivo ${escapeHtml(objetivoTexto(obj))}${obj.peso_objetivo && !UCCargas.plan(obj) ? ` · ${UCCargas.textoHtml(obj.peso_objetivo)}` : ''}</span>` : `<span class="reg-tag extra">Extra</span>`}
           </div>
-          ${previo && (previo.peso || previo.reps) ? `<div class="reg-previo">La vez pasada: <b>${previo.peso ? `${previo.peso} kg × ` : ''}${esSeg(previo.unidad) ? fmtSeg(previo.reps) : escapeHtml(String(previo.reps || '-'))}</b></div>` : ''}
+          ${previo && (previo.peso || previo.reps) ? `<div class="reg-previo">La vez pasada: <b>${previo.peso ? `${UCCargas.pesoHtml(previo.peso)} × ` : ''}${esSeg(previo.unidad) ? fmtSeg(previo.reps) : escapeHtml(String(previo.reps || '-'))}</b></div>` : ''}
+          ${indicada ? `<div class="reg-previo">Ahora: serie ${ex.sets.length+1} de ${obj.series_plan.length} · ${escapeHtml(indicada.reps)} ${esSeg(obj.unidad_objetivo)?'seg':'reps'}${indicada.peso_kg==null?'':' · '+UCCargas.pesoHtml(indicada.peso_kg)}</div>` : ''}
           ${obj && obj.nota ? `<div class="reg-previo">📝 ${escapeHtml(obj.nota)}</div>` : ''}
           ${notaProfeHtml(ex.nombre)}
         </div>
@@ -4125,10 +4137,10 @@ function renderDraftExercises(){
             <button type="button" onclick="regPaso('input-reps-${idx}', ${porTiempo ? -5 : -1}, false)" aria-label="${porTiempo ? '5 segundos menos' : 'Una repetición menos'}">−</button>
             <input type="number" inputmode="numeric" id="input-reps-${idx}" value="${escapeHtml(String(repsVal))}" placeholder="0" ${porTiempo ? `oninput="regActualizarSeg(${idx})"` : ''}>
             <button type="button" onclick="regPaso('input-reps-${idx}', ${porTiempo ? 5 : 1}, false)" aria-label="${porTiempo ? '5 segundos más' : 'Una repetición más'}">+</button></div>${porTiempo ? `<em class="reg-seg-ver" id="reg-seg-ver-${idx}">${repsVal ? fmtSeg(repsVal) : '0:00'}</em>` : ''}</div>
-          <div class="reg-step"><small>KG</small><div class="reg-step-fila">
-            <button type="button" onclick="regPaso('input-peso-${idx}', -2.5, true)" aria-label="2,5 kilos menos">−</button>
-            <input type="number" inputmode="decimal" step="0.5" id="input-peso-${idx}" value="${escapeHtml(String(pesoVal))}" placeholder="0">
-            <button type="button" onclick="regPaso('input-peso-${idx}', 2.5, true)" aria-label="2,5 kilos más">+</button></div></div>
+          <div class="reg-step"><small data-uc-unidad>${UCCargas.unidad().toUpperCase()}</small><div class="reg-step-fila">
+            <button type="button" onclick="regPaso('input-peso-${idx}', -(UCCargas.unidad()==='lb'?5:2.5), true)" aria-label="Reducir peso">−</button>
+            <input type="number" inputmode="decimal" min="0" step="any" data-uc-peso-input="numero" id="input-peso-${idx}" value="${escapeHtml(String(pesoVal))}" placeholder="0">
+            <button type="button" onclick="regPaso('input-peso-${idx}', (UCCargas.unidad()==='lb'?5:2.5), true)" aria-label="Aumentar peso">+</button></div></div>
         </div>
         <button type="button" class="unidad-toggle reg-unidad ${porTiempo ? 'es-seg' : ''}" onclick="regCambiarUnidad(${idx})" title="${porTiempo ? 'Volver a repeticiones y peso' : 'Cambiar a tiempo (planchas, isométricos)'}">${porTiempo ? '⇄ 🏋️ Reps' : '⇄ ⏱ Tiempo'}</button>
         <button type="button" class="btn-sm reg-guardar" id="btn-serie-${idx}" onclick="agregarSetABloque(${idx})">✓ Guardar serie ${ex.sets.length + 1}</button>
@@ -4162,7 +4174,7 @@ function renderDraftExercises(){
 function renderSugeridosButtonsHtml(lista){
   return (lista || []).map(ex => {
     const yaAgregado = activeSesionExs.some(g => g.nombre.toLowerCase() === ex.nombre.trim().toLowerCase());
-    const pesoPill = ex.peso_objetivo ? ` <span class="pill" style="padding:2px 8px; font-size:10px;">${escapeHtml(ex.peso_objetivo)}</span>` : '';
+    const pesoPill = ex.peso_objetivo ? ` <span class="pill" style="padding:2px 8px; font-size:10px;">${UCCargas.textoHtml(ex.peso_objetivo)}</span>` : '';
     return `<button type="button" class="btn-sm${yaAgregado ? ' added' : ''}" onclick="agregarBloqueEjercicio('${escapeHtml(ex.nombre).replace(/'/g,"\\'")}')">${yaAgregado ? '✓ ' : ''}${escapeHtml(ex.nombre)}${pesoPill}</button>`;
   }).join('');
 }
@@ -4270,7 +4282,7 @@ function renderSetLine(s, i, idx){
   const pr = s._isPR ? prPillHtml() : '';
   const btnBorrar = (idx != null && s.id) ? `<button type="button" class="remove-x reg-set-x" onclick="eliminarSetIndividual(${idx}, '${s.id}')" title="Quitar esta serie">✕</button>` : '';
   const peso = Number(s.peso) || 0;
-  return `<div class="set-line reg-set"><span class="reg-set-num">${i+1}</span><span class="reg-set-val">${esSeg(s.unidad) ? `⏱ ${fmtSeg(s.reps)}` : `${escapeHtml(String(s.reps))}<small>reps</small>`}${peso ? `<small>×</small>${escapeHtml(String(s.peso))}<small>kg</small>` : '<small>· peso corporal</small>'}${nota || tipoLado ? `<span class="reg-set-extra">${nota}${tipoLado}</span>` : ''}</span><span class="reg-set-fin">${pr || '<span class="reg-set-ok">✓</span>'}${btnBorrar}</span></div>`;
+  return `<div class="set-line reg-set"><span class="reg-set-num">${i+1}</span><span class="reg-set-val">${esSeg(s.unidad) ? `⏱ ${fmtSeg(s.reps)}` : `${escapeHtml(String(s.reps))}<small>reps</small>`}${peso ? `<small>×</small>${UCCargas.pesoHtml(s.peso)}` : '<small>· peso corporal</small>'}${nota || tipoLado ? `<span class="reg-set-extra">${nota}${tipoLado}</span>` : ''}</span><span class="reg-set-fin">${pr || '<span class="reg-set-ok">✓</span>'}${btnBorrar}</span></div>`;
 }
 
 async function eliminarSetIndividual(idx, setId){
@@ -4291,7 +4303,9 @@ async function agregarSetABloque(idx){
   const notaEl = document.getElementById(`input-nota-${idx}`);
   const tipoSerieEl = document.getElementById(`select-tiposerie-${idx}`);
   const ladoEl = document.getElementById(`select-lado-${idx}`);
-  const peso = pesoEl ? pesoEl.value : '';
+  const pesoEntrada = pesoEl ? pesoEl.value : '';
+  const peso = UCCargas.aKg(pesoEntrada);
+  if(pesoEntrada !== '' && (peso == null || peso > 10000)){ showToast('Revisa el peso: debe ser un número positivo válido'); return; }
   const reps = repsEl ? repsEl.value : '';
   const nota = notaEl ? notaEl.value.trim() : '';
   const tipo_serie = tipoSerieEl ? tipoSerieEl.value : '';
@@ -4333,7 +4347,7 @@ async function agregarSetABloque(idx){
   grupo.sets.push(data);
   // La próxima serie parte con los mismos números (se ajustan con − / +).
   grupo.repsSugeridas = reps;
-  grupo.pesoSugerido = peso !== '' ? peso : grupo.pesoSugerido;
+  grupo.pesoSugerido = peso != null ? peso : grupo.pesoSugerido;
   ejercicioAbierto = grupo.nombre;
   renderDraftExercises();
   const setsHolder = document.getElementById(`bloque-sets-${idx}`);
@@ -4405,8 +4419,10 @@ function otroDeSuperserie(par, nombre){
   return normEx(par[0]) === n ? par[1] : par[0];
 }
 async function guardarSuperseries(){
-  if(!activeSesionId) return;
-  await sb.from('sesiones').update({ superseries: activeSuperseries }).eq('id', activeSesionId);
+  if(!activeSesionId) return false;
+  const {error}=await sb.from('sesiones').update({ superseries: activeSuperseries }).eq('id', activeSesionId);
+  if(error){showToast('No se pudo guardar la superserie. Intenta de nuevo.');return false;}
+  return true;
 }
 function toggleSuperserieModo(){
   superserieModo = !superserieModo;
@@ -4417,6 +4433,7 @@ function toggleSuperserieModo(){
   renderDraftExercises();
 }
 async function tocarEjercicioParaSuperserie(idx){
+  if(STCSuperseries.ocupado()){showToast('Espera mientras se guarda la superserie del programa');return;}
   const grupo = activeSesionExs[idx];
   if(!grupo) return;
   if(buscarSuperserieDe(grupo.nombre)){
@@ -4433,19 +4450,22 @@ async function tocarEjercicioParaSuperserie(idx){
     renderDraftExercises();
     return;
   }
+  const anterior=activeSuperseries.map(p=>p.slice());
   activeSuperseries.push([superserieEsperando, grupo.nombre]);
   superserieEsperando = null;
   superserieModo = false;
   const btnFab = document.getElementById('btn-superserie-toggle');
   if(btnFab) btnFab.classList.remove('active');
-  await guardarSuperseries();
+  if(!await guardarSuperseries()){activeSuperseries=anterior;renderDraftExercises();return;}
   renderDraftExercises();
   showToast('Ejercicios unidos en superserie ✓');
 }
 async function quitarSuperserie(nombre){
+  if(STCSuperseries.ocupado()){showToast('Espera mientras se guarda la superserie del programa');return;}
+  const anterior=activeSuperseries.map(p=>p.slice());
   const n = normEx(nombre);
   activeSuperseries = activeSuperseries.filter(p => normEx(p[0]) !== n && normEx(p[1]) !== n);
-  await guardarSuperseries();
+  if(!await guardarSuperseries()){activeSuperseries=anterior;renderDraftExercises();return;}
   renderDraftExercises();
   showToast('Superserie deshecha');
 }
@@ -4803,7 +4823,7 @@ function renderResumenSesion(r){
       <p class="resumen-eyebrow">Sesión terminada</p>
       <h1 class="resumen-titulo">¡Entrenamiento completado!</h1>
       <div class="resumen-volumen">
-        <span class="resumen-volumen-num" id="resumen-volumen-num">${r.volumen.toLocaleString('es-CL')}</span><span class="resumen-volumen-kg">kg</span>
+        <span class="resumen-volumen-num" id="resumen-volumen-num">${UCCargas.pesoHtml(r.volumen)}</span>
       </div>
       <div class="resumen-volumen-label">Volumen total levantado</div>
       ${(r.gruposMusculares || []).length ? `<div class="resumen-grupos"><span>Hoy entrenaste</span><b>${r.gruposMusculares.map(g => escapeHtml(g)).join(' <i>·</i> ')}</b></div>` : ''}
@@ -4832,7 +4852,7 @@ function renderResumenSesion(r){
     const paso = (now) => {
       if(!el.isConnected) return;
       const p = Math.min(1, (now - t0) / dur);
-      el.textContent = Math.round(r.volumen * (1 - Math.pow(1 - p, 3))).toLocaleString('es-CL');
+      el.innerHTML = UCCargas.pesoHtml(Math.round(r.volumen * (1 - Math.pow(1 - p, 3))));
       if(p < 1) requestAnimationFrame(paso);
     };
     el.textContent = '0';
@@ -4869,6 +4889,7 @@ function descargarRutinaPDF(rutina, dias){
       y += 7;
     }
 
+    if(STCSuperseries.grupos(dia.ejercicios).length){STCSuperseries.grupos(dia.ejercicios).forEach(([,par],i)=>{if(y>265){doc.addPage();y=20;}doc.setFontSize(9);const txt=doc.splitTextToSize('Superserie '+(i+1)+': '+par.map(x=>x.e.nombre).join(' + '),180);doc.text(txt,14,y);y+=txt.length*5+2;});}
     doc.setFontSize(10);
     doc.text('Ejercicio', 14, y);
     doc.text('Series', 95, y);
@@ -4885,10 +4906,13 @@ function descargarRutinaPDF(rutina, dias){
       if(y > 280){ doc.addPage(); y = 20; }
       doc.text(String(ex.nombre).slice(0,38), 14, y);
       doc.text(String(ex.series_objetivo || '-'), 95, y);
-      doc.text(esSeg(ex.unidad_objetivo) ? `${ex.reps_objetivo || '-'} s` : String(ex.reps_objetivo || '-'), 116, y);
-      doc.text(String(ex.peso_objetivo || '-').slice(0,12), 138, y);
+      doc.text(UCCargas.plan(ex) ? 'Ver series' : esSeg(ex.unidad_objetivo) ? `${ex.reps_objetivo || '-'} s` : String(ex.reps_objetivo || '-'), 116, y);
+      doc.text(UCCargas.plan(ex) ? 'Variable' : String(ex.peso_objetivo || '-').slice(0,12), 138, y);
       doc.text(ex.descanso_seg ? `${ex.descanso_seg}s` : '-', 168, y);
       y += 6;
+      if(UCCargas.plan(ex)){
+        UCCargas.plan(ex).forEach((st,i)=>{ if(y>280){doc.addPage();y=20;} doc.setFontSize(9);doc.text('Serie '+(i+1)+': '+st.reps+(esSeg(ex.unidad_objetivo)?' s':' reps')+' - '+(st.peso_kg==null?'Sin carga indicada':st.peso_kg+' kg'),18,y);y+=5; });doc.setFontSize(11);
+      }
       if(ex.nota){
         if(y > 280){ doc.addPage(); y = 20; }
         doc.setFontSize(9);
@@ -5010,7 +5034,7 @@ function rutinaComoPrefill(rutina){
       nota: ex.nota || '',
       descanso_seg: ex.descanso_seg != null ? String(ex.descanso_seg) : '',
       tipo_serie_objetivo: ex.tipo_serie_objetivo || '',
-      lado_objetivo: ex.lado_objetivo || '', circuito: ex.circuito || null
+      lado_objetivo: ex.lado_objetivo || '', circuito: ex.circuito || null, series_plan: UCCargas.clonar(UCCargas.plan(ex)), superserie_id: ex.superserie_id || null
     }))
   }));
   return { nombre: rutina.nombre, objetivo: rutina.objetivo || '', dias };
@@ -5921,7 +5945,7 @@ async function renderCoachAlumnoDetail(alumnoId){
           nota: ex.nota || '',
           descanso_seg: ex.descanso_seg != null ? String(ex.descanso_seg) : '',
           tipo_serie_objetivo: ex.tipo_serie_objetivo || '',
-          lado_objetivo: ex.lado_objetivo || '', circuito: ex.circuito || null
+          lado_objetivo: ex.lado_objetivo || '', circuito: ex.circuito || null, series_plan: UCCargas.clonar(UCCargas.plan(ex)), superserie_id: ex.superserie_id || null
         }))
       }));
       renderRutinaEditor(alumno, { nombre: rutina.nombre, objetivo: rutina.objetivo || '', dias }, rutina.id);
@@ -6091,7 +6115,7 @@ function renderRutinaDiasEditor(){
   if(rutinaDiaActivo >= rutinaEditorDias.length) rutinaDiaActivo = Math.max(0, rutinaEditorDias.length - 1);
   const d = rutinaDiaActivo;
   const dia = rutinaEditorDias[d];
-  const tabs = `<div class="red-tabs">${rutinaEditorDias.map((di, i) => `<button type="button" class="red-tab ${i === d ? 'on' : ''}" onclick="rutinaIrADia(${i})">${fxDeDia(di) ? '⚡ ' : ''}${escapeHtml(di.nombre || `Día ${i + 1}`)}<span>${di.ejercicios.filter(r => (r.nombre || '').trim()).length}</span></button>`).join('')}${rutinaEditorDias.length < RUTINA_MAX_DIAS ? `<button type="button" class="red-tab add" onclick="agregarDiaRutina()">＋ Día</button>` : ''}</div>`;
+  const tabs = UCCargas.selector() + `<div class="red-tabs">${rutinaEditorDias.map((di, i) => `<button type="button" class="red-tab ${i === d ? 'on' : ''}" onclick="rutinaIrADia(${i})">${fxDeDia(di) ? '⚡ ' : ''}${escapeHtml(di.nombre || `Día ${i + 1}`)}<span>${di.ejercicios.filter(r => (r.nombre || '').trim()).length}</span></button>`).join('')}${rutinaEditorDias.length < RUTINA_MAX_DIAS ? `<button type="button" class="red-tab add" onclick="agregarDiaRutina()">＋ Día</button>` : ''}</div>`;
   const agregarDia = rutinaEditorDias.length < RUTINA_MAX_DIAS
     ? `<button type="button" class="red-add-dia" onclick="agregarDiaRutina()">＋ Agregar otro día<small>${rutinaEditorDias.length} de ${RUTINA_MAX_DIAS}</small></button>`
     : `<p class="red-max-dias">Llegaste al máximo de ${RUTINA_MAX_DIAS} días por programa.</p>`;
@@ -6148,17 +6172,18 @@ function redTarjetaHtml(row, d, e, total){
   if(!abierto){
     const partes = [];
     if(row.series_objetivo || row.reps_objetivo) partes.push(objetivoTexto(row));
-    if(row.peso_objetivo) partes.push(row.peso_objetivo);
+    if(row.peso_objetivo && !UCCargas.plan(row)) partes.push(UCCargas.texto(row.peso_objetivo));
     if(row.descanso_seg) partes.push(`${row.descanso_seg} s`);
     return `
       <div class="red-card mini" onclick="abrirTarjetaRutina(${d},${e})">
         ${img}
-        <div class="red-info"><b>${escapeHtml(row.nombre || 'Ejercicio sin nombre')}</b><small>${escapeHtml(partes.join(' · ') || 'Toca para completar')}</small></div>
+        <div class="red-info">${STCSuperseries.etiqueta(row,rutinaEditorDias[d].ejercicios)}<b>${escapeHtml(row.nombre || 'Ejercicio sin nombre')}</b><small>${escapeHtml(partes.join(' · ') || 'Toca para completar')}</small></div>
         ${orden}
         <span class="red-flecha">›</span>
       </div>`;
   }
   const paso = seg ? 5 : 1;
+  const individual = !!UCCargas.plan(row);
   const n = (v) => escapeHtml(String(v || ''));
   return `
     <div class="red-card on">
@@ -6174,21 +6199,22 @@ function redTarjetaHtml(row, d, e, total){
       </div>
       <div class="red-grid">
         <div class="red-st"><small>SERIES</small><div class="red-f">
-          <button type="button" onclick="rutinaPaso(${d},${e},'series_objetivo',-1)">−</button>
-          <input type="number" inputmode="numeric" id="red-series_objetivo-${d}-${e}" value="${n(row.series_objetivo)}" placeholder="0" oninput="rutinaEditorDias[${d}].ejercicios[${e}].series_objetivo=this.value">
-          <button type="button" onclick="rutinaPaso(${d},${e},'series_objetivo',1)">+</button></div></div>
+          <button type="button" onclick="rutinaPaso(${d},${e},'series_objetivo',-1)" ${individual?'disabled':''}>−</button>
+          <input type="number" inputmode="numeric" ${individual?'disabled':''} id="red-series_objetivo-${d}-${e}" value="${n(row.series_objetivo)}" placeholder="0" oninput="rutinaEditorDias[${d}].ejercicios[${e}].series_objetivo=this.value">
+          <button type="button" onclick="rutinaPaso(${d},${e},'series_objetivo',1)" ${individual?'disabled':''}>+</button></div></div>
         <div class="red-st ${seg ? 'es-seg' : ''}"><small>${seg ? 'TIEMPO · SEG' : 'REPS'}</small><div class="red-f">
-          <button type="button" onclick="rutinaPaso(${d},${e},'reps_objetivo',-${paso})">−</button>
-          <input type="text" inputmode="${seg ? 'numeric' : 'text'}" id="red-reps_objetivo-${d}-${e}" value="${n(row.reps_objetivo)}" placeholder="0" oninput="rutinaEditorDias[${d}].ejercicios[${e}].reps_objetivo=this.value">
-          <button type="button" onclick="rutinaPaso(${d},${e},'reps_objetivo',${paso})">+</button></div>
+          <button type="button" onclick="rutinaPaso(${d},${e},'reps_objetivo',-${paso})" ${individual?'disabled':''}>−</button>
+          <input type="text" inputmode="${seg ? 'numeric' : 'text'}" ${individual?'disabled':''} id="red-reps_objetivo-${d}-${e}" value="${n(row.reps_objetivo)}" placeholder="0" oninput="rutinaEditorDias[${d}].ejercicios[${e}].reps_objetivo=this.value">
+          <button type="button" onclick="rutinaPaso(${d},${e},'reps_objetivo',${paso})" ${individual?'disabled':''}>+</button></div>
           <button type="button" class="unidad-toggle ${seg ? 'es-seg' : ''}" onclick="cambiarUnidadRutina(${d},${e})" title="${seg ? 'Cambiar a repeticiones' : 'Cambiar a tiempo'}">${seg ? '⇄ 🏋️' : '⇄ ⏱'}</button></div>
         <div class="red-st"><small>PESO</small><div class="red-f red-f-texto">
-          <input type="text" id="red-peso_objetivo-${d}-${e}" value="${n(row.peso_objetivo)}" placeholder="0 kg" oninput="rutinaEditorDias[${d}].ejercicios[${e}].peso_objetivo=this.value"></div></div>
+          <input type="text" ${individual?'disabled':''} data-uc-peso-input="texto" id="red-peso_objetivo-${d}-${e}" value="${n(UCCargas.texto(row.peso_objetivo))}" placeholder="${UCCargas.unidad()}" oninput="rutinaEditorDias[${d}].ejercicios[${e}].peso_objetivo=UCCargas.leerTexto(this.value)"></div></div>
         <div class="red-st"><small>DESCANSO · SEG</small><div class="red-f">
           <button type="button" onclick="rutinaPaso(${d},${e},'descanso_seg',-15)">−</button>
           <input type="number" inputmode="numeric" id="red-descanso_seg-${d}-${e}" value="${n(row.descanso_seg)}" placeholder="0" oninput="rutinaEditorDias[${d}].ejercicios[${e}].descanso_seg=this.value">
           <button type="button" onclick="rutinaPaso(${d},${e},'descanso_seg',15)">+</button></div></div>
       </div>
+      ${UCCargas.boton(d,e,row)}${STCSuperseries.boton(row,rutinaEditorDias[d].ejercicios,d,e)}
       <details class="red-mas" ${row.nota || row.tipo_serie_objetivo || row.lado_objetivo ? 'open' : ''}>
         <summary>+ Nota / tipo / lado</summary>
         <input type="text" placeholder="Nota técnica: última serie al fallo, drop set..." value="${n(row.nota)}" oninput="rutinaEditorDias[${d}].ejercicios[${e}].nota=this.value">
@@ -6363,6 +6389,8 @@ function filasDesdeEditorRutina(){
           reps_objetivo: cfg.formato === 'tabata' ? String(cfg.trabajo) : (String(fxNum(r.reps_objetivo) || '') || null),
           unidad_objetivo: cfg.formato === 'tabata' || esSeg(r.unidad_objetivo) ? 'seg' : 'reps',
           peso_objetivo: (r.peso_objetivo || '').trim() || null,
+        series_plan: UCCargas.clonar(UCCargas.plan(r)),
+        superserie_id: cfg ? null : STCSuperseries.idValido(r,dia.ejercicios),
           nota: (r.nota || '').trim() || null,
           descanso_seg: cfg.formato === 'circuito' ? (cfg.descanso_ej || null) : null,
           tipo_serie_objetivo: null,
@@ -6380,6 +6408,8 @@ function filasDesdeEditorRutina(){
         reps_objetivo: r.reps_objetivo || null,
         unidad_objetivo: esSeg(r.unidad_objetivo) ? 'seg' : 'reps',
         peso_objetivo: (r.peso_objetivo || '').trim() || null,
+        series_plan: UCCargas.clonar(UCCargas.plan(r)),
+        superserie_id: cfg ? null : STCSuperseries.idValido(r,dia.ejercicios),
         nota: (r.nota || '').trim() || null,
         descanso_seg: r.descanso_seg ? Number(r.descanso_seg) : null,
         tipo_serie_objetivo: (r.tipo_serie_objetivo || '').trim() || null,
@@ -6416,9 +6446,9 @@ async function guardarRutina(alumno){
     try{
       const { data: previa } = await sb.from('rutinas').select('*, rutina_ejercicios(*)').eq('id', rutinaEditorId).maybeSingle();
       if(previa && previa.activa){
-        const norm = v => (v && typeof v === 'object') ? JSON.stringify(v) : String(v == null ? '' : v);
+        const norm = v => (v && typeof v === 'object') ? STCSuperseries.serializar(v) : String(v == null ? '' : v);
         const firma = rows => (rows || []).slice().sort((a, b) => ((a.dia_orden||0) - (b.dia_orden||0)) || ((a.orden||0) - (b.orden||0)))
-          .map(r => ['nombre','series_objetivo','reps_objetivo','unidad_objetivo','peso_objetivo','nota','descanso_seg','tipo_serie_objetivo','lado_objetivo','dia_nombre','circuito'].map(k => norm(r[k])).join('|')).join('~');
+          .map(r => ['nombre','series_objetivo','reps_objetivo','unidad_objetivo','peso_objetivo','nota','descanso_seg','tipo_serie_objetivo','lado_objetivo','dia_nombre','circuito','series_plan','superserie_id'].map(k => norm(r[k])).join('|')).join('~');
         const cambio = previa.nombre !== nombre || (previa.objetivo || '') !== (objetivo || '') || firma(previa.rutina_ejercicios) !== firma(filas);
         if(cambio){
           cambiosRutina.fecha = todayStr();
@@ -6905,7 +6935,7 @@ function renderFriendSessions(sessions){
   return sessions.map(s => {
     const groups = groupSets(s.sesion_series || []);
     return `<article class="session-card readonly-session"><div class="session-head"><span>${formatDate(s.fecha)}</span><span class="pill">${(s.sesion_series || []).length} series</span></div><div class="session-body">
-      ${groups.map(g => `<div class="exercise-group"><div class="ex-head"><span class="ex-name">${escapeHtml(g.nombre)}</span></div>${g.sets.map((set,i) => `<div class="set-line"><span>Serie ${i+1}</span><b>${escapeHtml(valorSerieTexto(set))} · ${escapeHtml(set.peso || 0)} kg</b></div>`).join('')}</div>`).join('')}
+      ${groups.map(g => `<div class="exercise-group"><div class="ex-head"><span class="ex-name">${escapeHtml(g.nombre)}</span></div>${g.sets.map((set,i) => `<div class="set-line"><span>Serie ${i+1}</span><b>${escapeHtml(valorSerieTexto(set))} · ${UCCargas.pesoHtml(set.peso || 0)}</b></div>`).join('')}</div>`).join('')}
       ${s.foto_url ? `<img class="session-photo" src="${escapeHtml(s.foto_url)}" alt="Foto compartida del entrenamiento">` : ''}
     </div></article>`;
   }).join('');
@@ -7833,7 +7863,7 @@ async function renderResumenProfe(sesionId, volver){
       <div class="sub" style="text-transform:capitalize;">${escapeHtml(fechaTxt)}</div>
       ${r.gruposMusculares.length ? `<div class="resumen-grupos"><span>Entrenó</span><b>${r.gruposMusculares.map(g => escapeHtml(g)).join(' <i>·</i> ')}</b></div>` : ''}
       <div class="resumen-stats resumen-profe-stats">
-        <div><b>${r.volumen.toLocaleString('es-CL')}</b><span>kg</span></div>
+        <div><b>${UCCargas.pesoHtml(r.volumen)}</b></div>
         <div><b>${r.series}</b><span>serie${r.series === 1 ? '' : 's'}</span></div>
         <div><b>${r.ejercicios}</b><span>ejercicio${r.ejercicios === 1 ? '' : 's'}</span></div>
         <div><b>${r.prs.length}</b><span>récord${r.prs.length === 1 ? '' : 's'}</span></div>
@@ -7843,7 +7873,7 @@ async function renderResumenProfe(sesionId, volver){
         ${grupos.map(g => `
           <div class="resumen-profe-ej" data-ej="${escapeHtml(g.nombre)}">
             <div class="resumen-profe-ej-nombre">${g.sets.some(s => s._isPR) ? '👑 ' : ''}${escapeHtml(g.nombre)}</div>
-            <div class="resumen-profe-sets">${g.sets.map((s, i) => `<span class="${s._isPR ? 'es-pr' : ''}" data-serie="${s.id}" data-pr="${s._isPR ? 1 : 0}">${i + 1}. ${Number(s.peso) ? `${Number(s.peso).toLocaleString('es-CL')} kg × ` : ''}${esSeg(s.unidad) ? `⏱ ${fmtSeg(s.reps)}` : (s.reps || 0)}</span>`).join('')}</div>
+            <div class="resumen-profe-sets">${g.sets.map((s, i) => `<span class="${s._isPR ? 'es-pr' : ''}" data-serie="${s.id}" data-pr="${s._isPR ? 1 : 0}">${i + 1}. ${Number(s.peso) ? `${UCCargas.pesoHtml(s.peso)} × ` : ''}${esSeg(s.unidad) ? `⏱ ${fmtSeg(s.reps)}` : (s.reps || 0)}</span>`).join('')}</div>
             ${g.sets.filter(s => s.nota).map(s => `<div class="resumen-profe-nota">“${escapeHtml(s.nota)}”</div>`).join('')}
             <div class="fb-ej"></div>
           </div>`).join('')}

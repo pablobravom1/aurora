@@ -246,10 +246,18 @@
     const pr = plan.prog; if(pr.modo === 'manual') return;
     plan.dias.forEach(d => d.ejercicios.forEach(e => {
       const base = e.semanas[0]; if(!base) return;
-      const n0 = numPeso(base.peso); if(n0 == null) return;
+      const n0 = numPeso(base.peso); if(n0 == null && !UCCargas.plan(base)) return;
       let ultNormal = base.peso;
       for(let w = 1; w < semanas; w++){
         const c = e.semanas[w];
+        if(UCCargas.plan(base)){
+          let anterior=w-1;while(anterior>0&&(pr.descarga||[]).includes(anterior+1))anterior--;
+          const prev=e.semanas[anterior]; const fuente=UCCargas.plan(prev)||base.series_plan;
+          const des=(pr.descarga||[]).includes(w+1);
+          c.series_plan=base.series_plan.map((baseSerie,i)=>{const s=fuente[i]||baseSerie;return ({reps:base.series_plan[i%base.series_plan.length].reps,peso_kg:s.peso_kg==null?null:redondear(des?s.peso_kg*(Number(pr.factor)||0.8):(pr.modo==='pct'?s.peso_kg*(1+(Number(pr.paso)||0)/100):s.peso_kg+(Number(pr.paso)||0)))});});
+          if(des)c.series_plan=c.series_plan.slice(0,Math.max(1,Math.round(base.series_plan.length*.7)));
+          c.series=String(c.series_plan.length);c.reps=c.series_plan[0].reps;c.peso=c.series_plan[0].peso_kg==null?'':c.series_plan[0].peso_kg+' kg';continue;
+        }
         if((pr.descarga || []).includes(w + 1)){
           const f = Number(pr.factor) || 0.8;
           const nn = numPeso(ultNormal);
@@ -288,6 +296,8 @@
         const notas = [String(c.nota || '').trim(), String(c.rir || '').trim() ? 'RIR ' + String(c.rir).trim() : '', String(e.nota || '').trim()].filter(Boolean).join(' · ');
         filas.push({
           nombre: e.nombre.trim(),
+          series_plan: UCCargas.clonar(UCCargas.plan(c)),
+          superserie_id: STCSuperseries.idValido(e,d.ejercicios),
           series_objetivo: c.series !== '' && !isNaN(Number(c.series)) ? Number(c.series) : null,
           reps_objetivo: String(c.reps || '').trim() || null,
           unidad_objetivo: 'reps',
@@ -415,7 +425,7 @@
     if(w <= 1) return '';
     const a = numPeso(e.semanas[w - 2].peso), b = numPeso(e.semanas[w - 1].peso);
     if(campo !== 'peso' || a == null || b == null || a === b) return '';
-    const d = Math.round((b - a) * 10) / 10;
+    const d = Math.round((/%/.test(e.semanas[w-1].peso)?b-a:UCCargas.deKg(b-a))*10)/10;
     return `<em class="${d < 0 ? 'neg' : ''}">${d > 0 ? '+' : ''}${String(d).replace('.', ',')}</em>`;
   }
   function cambiaVsAnterior(e, w, campo){
@@ -429,10 +439,11 @@
     const c = e.semanas[w - 1];
     const thumb = (typeof renderExerciseThumbnail === 'function' ? renderExerciseThumbnail(e) : '') || `<span class="ms-ph">${esc((e.nombre || '?').slice(0, 1).toUpperCase())}</span>`;
     const video = verTecnica(e);
-    const campo = (k, etq, tipo, extra) => `<label class="ms-f"><span>${etq}${deltaHtml(e, w, k)}</span><input type="${tipo || 'text'}" ${tipo === 'number' ? 'inputmode="decimal"' : ''} data-k="${k}" value="${esc(c[k])}" class="${cambiaVsAnterior(e, w, k) ? 'cam' : ''}" ${extra || ''}></label>`;
+    const campo = (k, etq, tipo, extra) => `<label class="ms-f"><span>${etq}${deltaHtml(e, w, k)}</span><input type="${tipo || 'text'}" ${tipo === 'number' ? 'inputmode="decimal"' : ''} data-k="${k}" ${k==='peso'?'data-uc-peso-input="texto"':''} ${UCCargas.plan(c)&&['series','reps','peso'].includes(k)?'disabled':''} value="${esc(k==='peso'?UCCargas.texto(c[k]):c[k])}" class="${cambiaVsAnterior(e, w, k) ? 'cam' : ''}" ${extra || ''}></label>`;
     return `<div class="ms-ex" data-e="${i}">
       <div class="ms-exr">${thumb}<div class="ms-ext"><div class="ms-exn"><b>${esc(e.nombre)}</b><span class="ms-tipo">${esc(TIPOS[e.tipo || ''] || 'Normal')}</span></div><div class="ms-exv">${video}</div></div><button type="button" class="ms-more" data-more="${i}" aria-label="Más opciones de ${esc(e.nombre)}">⋯</button></div>
       <div class="ms-grid">${campo('series', 'Series', 'number')}${campo('reps', 'Reps', 'text')}${campo('peso', 'Peso', 'text', 'placeholder="kg o %"')}${campo('descanso', 'Desc. (s)', 'number')}</div>
+      <button type="button" class="uc-series-boton" data-series="${i}">${UCCargas.plan(c)?'✎ Editar las '+c.series_plan.length+' series':'＋ Peso y repeticiones por serie'}</button>${UCCargas.tabla(c)}${STCSuperseries.etiqueta(e,dia.ejercicios)}<button type="button" class="uc-series-boton" data-super="${i}">⇄ ${STCSuperseries.detalle(e,dia.ejercicios)?'Cambiar pareja de superserie':'Unir en superserie'}</button>
       <details class="ms-masd" ${(c.rir || c.nota || e.nota) ? 'open' : ''}><summary>RIR y notas</summary><div class="ms-g2"><input type="text" data-k="rir" placeholder="RIR" value="${esc(c.rir)}"><input type="text" data-k="nota" placeholder="Nota de esta semana" value="${esc(c.nota)}"></div></details>
     </div>`;
   }
@@ -456,7 +467,7 @@
       <div class="ms-titulo"><h1><input type="text" id="ms-nombre" class="ms-in-t" maxlength="60" value="${esc(m.nombre)}" aria-label="Nombre del mesociclo"></h1><span class="ms-pill ${asignado ? 'ok' : ''}">${asignado ? 'En curso · ' : ''}${esc(exTxt)}</span></div>
       <input type="text" id="ms-objetivo" class="ms-in-s" maxlength="120" placeholder="Objetivo (opcional)" value="${esc(m.objetivo || '')}" aria-label="Objetivo">
       <div class="ms-tabs" id="ms-sems">${Array.from({ length: m.semanas }, (_, i) => `<button type="button" class="ms-tab ${i + 1 === w ? 'on' : ''} ${des.includes(i + 1) ? 'des' : ''}" data-w="${i + 1}">${etiquetaSemana(i + 1, des.includes(i + 1), asignado && m.semana_aplicada === i + 1 ? '<small>actual</small>' : '')}</button>`).join('')}${m.semanas < 16 ? '<button type="button" class="ms-tab add" id="ms-addsem" aria-label="Agregar semana">+</button>' : ''}</div>
-      <div class="ms-tools">
+      ${UCCargas.selector()}<div class="ms-tools">
         <button type="button" class="ms-chipb plain" id="ms-descarga">${des.includes(w) ? '↺ Quitar descarga' : '▽ Semana de descarga'}</button>
         <button type="button" class="ms-chipb plain" id="ms-general">▦ Vista general</button>
         <button type="button" class="ms-chipb plain" id="ms-ajustes">⚙ Ajustes</button>
@@ -500,8 +511,8 @@
     document.querySelectorAll('#ms-exs .ms-ex').forEach(card => {
       const i = parseInt(card.dataset.e, 10), e = p.dias[E.dia].ejercicios[i];
       card.querySelectorAll('input[data-k]').forEach(inp => {
-        inp.oninput = () => { e.semanas[w - 1][inp.dataset.k] = inp.value; sucio(); };
-        if(inp.dataset.k === 'peso') inp.dataset.prev = inp.value;
+        inp.oninput = () => { e.semanas[w - 1][inp.dataset.k] = inp.dataset.k==='peso' ? UCCargas.leerTexto(inp.value) : inp.value; sucio(); };
+        if(inp.dataset.k === 'peso') inp.dataset.prev = e.semanas[w-1].peso;
         inp.onchange = () => { // marca cambios contra la semana anterior sin perder el foco
           inp.classList.toggle('cam', cambiaVsAnterior(e, w, inp.dataset.k));
           if(inp.dataset.k === 'peso'){
@@ -510,17 +521,22 @@
             const pr = p.prog;
             if(w === 1 && pr.modo !== 'manual' && m.semanas > 1 && numPeso(inp.value) != null){
               const antes = inp.dataset.prev || '';
+              const pesoActual = e.semanas[w-1].peso;
               const seqVieja = numPeso(antes) != null ? pesosAuto(antes, m.semanas, pr) : null;
               const actuales = e.semanas.slice(1).map(c => String(c.peso || '').trim());
               if(actuales.every((v, k) => v === '' || (seqVieja && v === seqVieja[k]))){
-                pesosAuto(inp.value, m.semanas, pr).forEach((v, k) => { e.semanas[k + 1].peso = v; });
-                if(actuales.some((v, k) => v !== pesosAuto(inp.value, m.semanas, pr)[k])) toast('Pesos de las demás semanas calculados ✓');
+                pesosAuto(pesoActual, m.semanas, pr).forEach((v, k) => { e.semanas[k + 1].peso = v; });
+                if(actuales.some((v, k) => v !== pesosAuto(pesoActual, m.semanas, pr)[k])) toast('Pesos de las demás semanas calculados ✓');
               }
             }
-            inp.dataset.prev = inp.value;
+            inp.dataset.prev = e.semanas[w-1].peso;
           }
         };
       });
+      card.querySelector('[data-super]').onclick=()=>STCSuperseries.elegir(p.dias[E.dia].ejercicios,i,()=>{sucio();pintarEditor();});
+      card.querySelector('[data-series]').onclick = () => {
+        const c=e.semanas[w-1]; UCCargas.editar({nombre:e.nombre,series_objetivo:c.series,reps_objetivo:c.reps,peso_objetivo:c.peso,series_plan:c.series_plan}, p=>{ c.series_plan=p; if(p){c.series=String(p.length);c.reps=p[0].reps;c.peso=p[0].peso_kg==null?'':p[0].peso_kg+' kg';} sucio();pintarEditor(); });
+      };
       card.querySelector('[data-more]').onclick = () => menuEjercicio(i);
     });
     $id('ms-guardar').onclick = () => guardar(false);
@@ -534,7 +550,10 @@
     while(base > 1 && des.includes(base)) base--;
     p.dias.forEach(d => d.ejercicios.forEach(e => {
       const ult = clon(e.semanas[base - 1] || e.semanas[e.semanas.length - 1]);
-      if(p.prog.modo !== 'manual') ult.peso = siguientePeso(ult.peso, p.prog);
+      if(p.prog.modo !== 'manual'){
+        ult.peso = siguientePeso(ult.peso, p.prog);
+        if(UCCargas.plan(ult))ult.series_plan=ult.series_plan.map(s=>({...s,peso_kg:s.peso_kg==null?null:redondear(p.prog.modo==='pct'?s.peso_kg*(1+(Number(p.prog.paso)||0)/100):s.peso_kg+(Number(p.prog.paso)||0))}));
+      }
       e.semanas.push(ult);
     }));
     E.semana = m.semanas; sucio(); pintarEditor();
@@ -600,7 +619,7 @@
         if(a === 'cambiar'){ cerrar(); elegirEjercicio(e.nombre, (nombre) => { e.nombre = nombre; sucio(); pintarEditor(); }); return; }
         if(a === 'arriba'){ [lista[i - 1], lista[i]] = [lista[i], lista[i - 1]]; }
         else if(a === 'abajo'){ [lista[i + 1], lista[i]] = [lista[i], lista[i + 1]]; }
-        else if(a === 'dup'){ lista.splice(i + 1, 0, clon(e)); }
+        else if(a === 'dup'){ lista.splice(i + 1, 0, {...clon(e),superserie_id:null}); }
         else if(a === 'repetir'){ const c = e.semanas[w - 1]; e.semanas = e.semanas.map(() => clon(c)); toast('Semana ' + w + ' repetida en todas'); }
         else if(a === 'del'){
           cerrar();
@@ -916,7 +935,7 @@
       const peso = String(c.peso || '').trim();
       const pesoTxt = peso ? (/^[\d.,]+$/.test(peso) ? peso + ' kg' : peso) : '—';
       const desTxt = c.descanso ? (Number(c.descanso) >= 60 && Number(c.descanso) % 60 === 0 ? (Number(c.descanso) / 60) + "'" : c.descanso + '"') : '—';
-      return `<div class="ms-grid"><div class="ms-f"><span>Series</span><b>${esc(c.series || '—')}</b></div><div class="ms-f"><span>Reps</span><b>${esc(c.reps || '—')}</b></div><div class="ms-f up"><span>Peso</span><b>${esc(pesoTxt)}</b></div><div class="ms-f"><span>Desc.</span><b>${esc(desTxt)}</b></div></div>`;
+      return UCCargas.tabla(c) + `<div class="ms-grid"><div class="ms-f"><span>Series</span><b>${esc(c.series || '—')}</b></div><div class="ms-f"><span>Reps</span><b>${esc(c.reps || '—')}</b></div><div class="ms-f up"><span>Peso</span><b>${UCCargas.textoHtml(pesoTxt)}</b></div><div class="ms-f"><span>Desc.</span><b>${esc(desTxt)}</b></div></div>`;
     };
     const pintar = () => {
       const pesoPrev = (e) => { const c = w > 1 ? e.semanas[w - 2] : null; if(!c || !String(c.peso || '').trim()) return ''; const t = String(c.peso).trim(); return (/^[\d.,]+$/.test(t) ? t + ' kg' : t) + (c.reps ? ' × ' + c.reps : ''); };
@@ -932,7 +951,7 @@
           const c = e.semanas[w - 1] || celdaBase();
           const thumb = (typeof renderExerciseThumbnail === 'function' ? renderExerciseThumbnail(e) : '') || `<span class="ms-ph">${esc((e.nombre || '?').slice(0, 1).toUpperCase())}</span>`;
           const prev = pesoPrev(e);
-          return `<div class="ms-ex"><div class="ms-exr">${thumb}<div class="ms-ext"><div class="ms-exn"><b>${esc(e.nombre)}</b><span class="ms-tipo">${e.tipo ? esc(TIPOS[e.tipo] || '') : esc(String(c.series || '–')) + ' × ' + esc(String(c.reps || '–'))}</span></div><div class="ms-exv">${verTecnica(e)}</div></div></div>
+          return `<div class="ms-ex"><div class="ms-exr">${thumb}<div class="ms-ext"><div class="ms-exn"><b>${esc(e.nombre)}</b><span class="ms-tipo">${e.tipo ? esc(TIPOS[e.tipo] || '') : esc(String(c.series || '–')) + ' × ' + esc(String(c.reps || '–'))}</span></div><div class="ms-exv">${verTecnica(e)}</div>${STCSuperseries.etiqueta(e,d.ejercicios)}</div></div>
             ${datos(c)}
             ${(c.nota || c.rir || e.nota || e.lado) ? `<p class="ms-note">${esc([c.rir ? 'RIR ' + c.rir : '', e.lado ? (LADOS[e.lado] || '') : '', c.nota, e.nota].filter(Boolean).join(' · '))}</p>` : ''}
             ${prev ? `<p class="ms-note">Semana pasada: ${esc(prev)}</p>` : ''}</div>`;
