@@ -232,6 +232,7 @@
     S.charts.forEach(c => { try{ c.destroy(); }catch(_e){} }); S.charts = [];
     const m = S.mes, ant = mesAnterior(m), dm = diasDelMes(m);
     const ven = D(m, 'ventas'), inv = D(m, 'inversion'), ret = D(m, 'retencion'), baj = D(m, 'bajas'), pro = D(m, 'protocolos'), sco = D(m, 'scorecard'), plan = D(m, 'plan_rs');
+    const gastos = inv && inv.gastos;
     let com = D(m, 'comercial'), comFuente = fila(m, 'comercial') ? fila(m, 'comercial').fuente : null;
     let app = null; try{ app = await comercialApp(m); }catch(_e){}
     if(app && app.agendadas){ com = app; comFuente = 'Módulo de ventas de la app (en vivo)'; }
@@ -329,6 +330,19 @@
             ${sd('% Retención', pctTxt(rP), 'meta 90%' + (num(ret.renovados) != null ? ' · ' + ret.renovados + ' de ' + ret.por_renovar : ''), semRet(rP))}
             ${num(ret.riesgo) != null ? sd('Riesgo de abandono', entero(num(ret.riesgo)), 'alumnos activos con señales de riesgo' + (num(ret.activos) ? ' · ' + pctTxt(pctDe(num(ret.riesgo), num(ret.activos))) + ' de ' + ret.activos : ''), 'a') : ''}
           </div>` : vacio('Aún no se carga la retención de este mes (DASHBOARD MES).')}
+        </section>
+      </div>
+
+      <div class="cx-grid">
+        <section class="cx-pn" aria-label="Gastos del mes">
+          <h3>Gastos del mes <small>${esc(mesLargo(m))}</small></h3>
+          ${gastos ? `<div class="cx-sd">
+            ${sd('Gasto total', plata(num(gastos.total)), 'fijos + variables')}
+            ${sd('Gastos fijos', plata(num(gastos.fijos)), 'según planilla de gastos')}
+            ${sd('Gastos variables', plata(num(gastos.variables)), 'según planilla de gastos')}
+            ${sd('Con factura', plata(num(gastos.con_factura)), 'gastos fijos y variables')}
+            ${sd('Sin factura', plata(num(gastos.sin_factura)), 'gastos fijos y variables')}
+          </div><p class="cx-fu">Fuente: ${esc(fila(m, 'inversion').fuente || 'NOTAS - GASTOS')}</p>` : vacio('Aún no hay un desglose de gastos verificado para este mes.')}
         </section>
       </div>
 
