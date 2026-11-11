@@ -2,7 +2,7 @@
 // Los números vienen de los Excel de STC (se cargan en la tabla ceo_datos: PAGOS MES, NOTAS - GASTOS,
 // DASHBOARD MES, EXCEL DE BAJAS, PROTOCOLOS STC y SEGUIMIENTO LEADS ONLINE) y, cuando las vendedoras
 // registren en la app, el embudo comercial sale en vivo del módulo de ventas.
-// Lo ve el perfil CEO al entrar; RS y administradores lo abren desde su inicio. Se carga después de ventas.js.
+// Lo ve el perfil CEO al entrar; RS y administradores lo abren desde su inicio.
 (function(){
   'use strict';
   const esc = (s) => (typeof escapeHtml === 'function' ? escapeHtml(s == null ? '' : String(s)) : String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])));
@@ -47,6 +47,9 @@
   .cx-ctr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .cx-ctr select{margin:0;width:auto;min-width:150px;padding:8px 10px;border-radius:10px}
   .cx-ctr .switch-user{white-space:nowrap}
+  .cx-ctr .cx-alumnos-cta{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 14px;background:#ffdf4a;color:#171300;border:1px solid #ffe580;border-radius:12px;font-weight:800;box-shadow:0 3px 12px #ffdf4a24}
+  .cx-ctr .cx-alumnos-cta:hover{background:#ffe879;color:#171300}
+  .cx-ctr .cx-alumnos-cta:focus-visible{outline:2px solid #fff;outline-offset:3px}
   .cx-vivo{display:inline-flex;align-items:center;gap:7px;font:600 11px 'IBM Plex Mono',monospace;color:var(--cx-ok);background:rgba(94,227,182,.1);border:1px solid rgba(94,227,182,.3);border-radius:99px;padding:5px 11px;white-space:nowrap}
   .cx-vivo i{width:7px;height:7px;border-radius:50%;background:var(--cx-ok);animation:cxPulso 1.8s infinite}
   @keyframes cxPulso{70%{box-shadow:0 0 0 7px rgba(94,227,182,0)}100%{box-shadow:0 0 0 0 rgba(94,227,182,0)}}
@@ -206,8 +209,7 @@
         <div class="cx-ctr">
           <span class="cx-vivo" id="cx-corte" hidden></span>
           <select id="cx-mes" aria-label="Mes"></select>
-          ${esCeo ? '<button type="button" class="switch-user" id="cx-alumnos">Alumnos</button>' : ''}
-          ${window.UCVentas ? '<button type="button" class="switch-user" id="cx-ventas">📈 Ventas</button>' : ''}
+          ${esCeo ? '<button type="button" class="switch-user cx-alumnos-cta" id="cx-alumnos"><span aria-hidden="true">👥</span> Alumnos</button>' : ''}
           <button type="button" class="switch-user" id="cx-act">↻ Actualizar</button>
           ${esCeo ? `<button type="button" class="switch-user" id="btn-logout">${IC('logout')} Salir</button>` : `<button type="button" class="switch-user" id="cx-volver">${IC('arrowLeft')} Volver</button>`}
         </div>
@@ -216,7 +218,6 @@
     </div>`;
     const lo = $id('btn-logout'); if(lo && typeof handleLogout === 'function') lo.onclick = handleLogout;
     const vo = $id('cx-volver'); if(vo) vo.onclick = () => renderCoachHome();
-    const ve = $id('cx-ventas'); if(ve) ve.onclick = () => window.UCVentas.abrir('dashboard');
     const alumnos = $id('cx-alumnos'); if(alumnos) alumnos.onclick = renderAlumnosCeo;
     $id('cx-act').onclick = () => renderPanelCeo();
     try{ await cargarDatos(); }
@@ -380,7 +381,7 @@
           ${ven ? `<div class="cx-mv"><div class="cx-mv-t"><span>Meta de ventas (LOC)</span><b>${plata(num(ven.monto))} <small>${num(ven.meta) ? 'de ' + plata(num(ven.meta)) + ' · ' + pctTxt(vP) : 'meta no cargada'}</small></b></div>
             ${num(ven.meta) ? `<div class="cx-mv-bar"><i style="width:${Math.min(100, vP || 0)}%"></i><em style="left:${Math.min(100, esperado)}%"></em></div><p class="cx-mv-nota">┆ al día ${corteDia} debería ir en ${esperado}% · ${vP >= esperado ? 'va sobre el ritmo' : 'va bajo el ritmo'}</p>` : ''}</div>` : vacio('Aún no se cargan las ventas de este mes (PAGOS MES).')}
           <div class="cx-sd">
-            ${sd('Cantidad de leads', entero(com && num(com.leads)), com && num(com.leads) != null ? (canalesTxt(com.canales) || 'registrados en Mi turno') : 'se registran en «Mi turno» del módulo de ventas')}
+            ${sd('Cantidad de leads', entero(com && num(com.leads)), com && num(com.leads) != null ? (canalesTxt(com.canales) || 'leads registrados') : 'sin datos')}
             ${sd('CP agendadas', entero(com && num(com.agendadas)), com && num(com.leads) ? pctTxt(pctDe(num(com.agendadas), num(com.leads))) + ' de los leads' : (com ? 'clases de prueba del mes' : 'sin datos'))}
             ${sd('CP asistidas', entero(com && num(com.asistidas)), com && num(com.debian) != null ? 'de ' + com.debian + ' que debían venir' : 'sin datos')}
             ${sd('Conversión agendadas', pctTxt(comPct(com, 'vendidas', 'debian')), com && num(com.vendidas) != null ? com.vendidas + ' de ' + com.debian + ' compraron' : 'sin datos')}
@@ -555,13 +556,13 @@
           const b = document.createElement('button');
           b.type = 'button'; b.className = 'pl-acceso'; b.id = 'cx-acceso';
           b.innerHTML = `<span class="pl-acceso-ico">📊</span><span class="pl-acceso-txt"><small>DIRECCIÓN</small><b>Panel CEO</b><em>Lo que ve el CEO: ventas, retención, protocolos y alertas</em></span><span class="pl-acceso-go">${IC('chevronRight')}</span>`;
-          const ancla = $id('vt-acceso') || $id('btn-mis-plantillas');
+          const ancla = $id('btn-mis-plantillas');
           if(ancla) ancla.insertAdjacentElement('beforebegin', b);
           else { const h = root().querySelector('.header-actions'); if(h) h.insertAdjacentElement('afterend', b); else root().prepend(b); }
           b.onclick = () => renderPanelCeo();
         }
         // En computador la app ubica cada acceso en la misma casilla: se agrupan para que queden uno bajo otro
-        const pila = ['cx-acceso', 'vt-acceso', 'btn-mis-plantillas'].map($id).filter(e => e && e.parentElement === root());
+        const pila = ['cx-acceso', 'btn-mis-plantillas'].map($id).filter(e => e && e.parentElement === root());
         if(pila.length > 1 && !$id('acc-pila')){
           const w = document.createElement('div');
           w.id = 'acc-pila'; w.className = 'acc-pila';
