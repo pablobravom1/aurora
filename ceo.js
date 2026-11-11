@@ -206,6 +206,7 @@
         <div class="cx-ctr">
           <span class="cx-vivo" id="cx-corte" hidden></span>
           <select id="cx-mes" aria-label="Mes"></select>
+          ${esCeo ? '<button type="button" class="switch-user" id="cx-alumnos">Alumnos</button>' : ''}
           ${window.UCVentas ? '<button type="button" class="switch-user" id="cx-ventas">📈 Ventas</button>' : ''}
           <button type="button" class="switch-user" id="cx-act">↻ Actualizar</button>
           ${esCeo ? `<button type="button" class="switch-user" id="btn-logout">${IC('logout')} Salir</button>` : `<button type="button" class="switch-user" id="cx-volver">${IC('arrowLeft')} Volver</button>`}
@@ -216,6 +217,7 @@
     const lo = $id('btn-logout'); if(lo && typeof handleLogout === 'function') lo.onclick = handleLogout;
     const vo = $id('cx-volver'); if(vo) vo.onclick = () => renderCoachHome();
     const ve = $id('cx-ventas'); if(ve) ve.onclick = () => window.UCVentas.abrir('dashboard');
+    const alumnos = $id('cx-alumnos'); if(alumnos) alumnos.onclick = renderAlumnosCeo;
     $id('cx-act').onclick = () => renderPanelCeo();
     try{ await cargarDatos(); }
     catch(err){ $id('cx-cuerpo').innerHTML = vacio('No se pudo cargar el panel.<br><small>' + esc(err && err.message || '') + '</small>'); return; }
@@ -225,6 +227,75 @@
     sel.innerHTML = meses.map(m => `<option value="${m}" ${m === S.mes ? 'selected' : ''}>${mesLargo(m)}</option>`).join('');
     sel.onchange = () => { S.mes = sel.value; pintar(); };
     pintar();
+  }
+
+  async function renderAlumnosCeo(){
+    if(!esRol('ceo')) return;
+    S.charts.forEach(chart => chart.destroy());
+    S.charts = [];
+    root().innerHTML = `<div class="cx">
+      <div class="cx-top"><div><small>PANEL CEO · SOLO LECTURA</small><b>Alumnos y protocolos</b></div>
+      <button type="button" class="switch-user" id="cx-alumnos-volver">${IC('arrowLeft')} Volver al panel</button></div>
+      <section class="cx-pn" id="cx-alumnos-contenido"><div class="loading" role="status">Cargando alumnos...</div></section>
+    </div>`;
+    $id('cx-alumnos-volver').onclick = renderPanelCeo;
+    const cont = $id('cx-alumnos-contenido');
+    try {
+      const { data, error } = await sb.rpc('stc_ceo_alumnos');
+      if(error) throw error;
+      if(!cont.isConnected || !esRol('ceo')) return;
+      const lista = data || [];
+      const sinProfesor = 'Sin profesor asignado';
+      const profesores = [...new Set(lista.map(a => a.profesor || sinProfesor))].sort((a, b) => a.localeCompare(b, 'es'));
+      const normalizar = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      const fechaTxt = f => f ? ' · ' + esc(fCorta(f)) : '';
+      const hoy = hoyISO();
+      const medirEstado = (fecha, dias) => {
+        if(!fecha) return 'Sin registro';
+        const limite = new Date(hoy + 'T12:00:00');
+        limite.setDate(limite.getDate() - dias);
+        return fecha < iso(limite) ? 'Vencida' : 'Al día';
+      };
+      const statusMedicion = a => {
+        const estado = medirEstado(a.medicion_fecha, 60);
+        const excepcion = { no_aplica: 'No aplica', no_quiso: 'No quiso' }[a.medicion_tipo];
+        return excepcion && estado === 'Al día' ? excepcion : estado;
+      };
+      const statusCiclo = a => {
+        if(!a.mesociclo_inicio || !a.mesociclo_semanas) return 'Sin registro';
+        if(a.mesociclo_inicio > hoy) return 'Programado';
+        const fin = new Date(a.mesociclo_inicio + 'T12:00:00');
+        fin.setDate(fin.getDate() + 7 * a.mesociclo_semanas);
+        return hoy < iso(fin) ? 'Al día' : 'Vencido';
+      };
+      const pendientes = a => a.entrevista_estado === 'Sin registro' || ['Sin registro', 'Vencida'].includes(statusMedicion(a)) ||
+        (['Sin registro', 'Vencida'].includes(medirEstado(a.rutina_fecha, 30)) && statusCiclo(a) !== 'Al día');
+      const chip = (estado, fecha) => {
+        const color = estado.startsWith('Vencid') ? 'r' : estado === 'Sin registro' ? 'a' : ['Al día', 'Registrada'].includes(estado) ? 'v' : '';
+        return `<span class="cx-pt ${color}">${esc(estado)}</span>${fechaTxt(fecha)}`;
+      };
+      cont.innerHTML = `<div class="cx-ctr" style="margin-bottom:14px">
+        <input type="search" id="cx-alumnos-buscar" aria-label="Buscar alumno" placeholder="Buscar alumno" style="width:auto;margin:0">
+        <select id="cx-alumnos-profesor" aria-label="Profesor"><option value="">Todos los profesores</option>${profesores.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}</select>
+        <label style="margin:0"><input type="checkbox" id="cx-alumnos-pendientes"> Con protocolos pendientes</label>
+      </div><p class="cx-sb" id="cx-alumnos-total" role="status"></p>
+      <div class="cx-tw"><table class="cx-tb"><thead><tr><th>Alumno</th><th>Profesor</th><th>Última sesión</th><th>Entrevista inicial</th><th>Medición</th><th>Rutina activa</th><th>Mesociclo</th></tr></thead>
+      <tbody id="cx-alumnos-filas"></tbody></table></div>`;
+      const buscar = $id('cx-alumnos-buscar'), profesor = $id('cx-alumnos-profesor'), filtrar = $id('cx-alumnos-pendientes');
+      const pintarAlumnos = () => {
+        const q = normalizar(buscar.value);
+        const filas = lista.filter(a => normalizar(a.alumno).includes(q) && (!profesor.value || (a.profesor || sinProfesor) === profesor.value) && (!filtrar.checked || pendientes(a)));
+        $id('cx-alumnos-total').textContent = `${filas.length} de ${lista.length} alumnos con cuenta en STC App`;
+        $id('cx-alumnos-filas').innerHTML = filas.length ? filas.map(a => `<tr><td>${esc(a.alumno || 'Sin nombre')}</td><td>${esc(a.profesor || sinProfesor)}</td>
+          <td>${a.ultima_sesion ? esc(fCorta(a.ultima_sesion)) : 'Sin sesiones'}</td><td>${chip(a.entrevista_estado, a.entrevista_fecha)}</td>
+          <td>${chip(statusMedicion(a), a.medicion_fecha)}</td><td>${chip(medirEstado(a.rutina_fecha, 30), a.rutina_fecha)}</td>
+          <td>${chip(statusCiclo(a), a.mesociclo_inicio)}</td></tr>`).join('') : '<tr><td colspan="7">Sin resultados para los filtros elegidos.</td></tr>';
+      };
+      buscar.oninput = profesor.onchange = filtrar.onchange = pintarAlumnos;
+      pintarAlumnos();
+    } catch(_err) {
+      if(cont.isConnected) cont.innerHTML = vacio('No se pudieron cargar los alumnos. Vuelve al panel e inténtalo nuevamente.');
+    }
   }
 
   async function pintar(){
