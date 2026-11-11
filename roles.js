@@ -477,8 +477,8 @@ window.montarGestionPerfiles = async function(holderId){
   holder.innerHTML = `<div class="loading">Cargando personas...</div>`;
   const { data, error } = await sb.from('profiles').select('id,nombre,role,es_supervisor,username,perfil_pro,avatar_key,foto_perfil_url').order('nombre');
   if(error){ holder.innerHTML = `<div class="error-banner">No se pudo cargar la lista.</div>`; return; }
-  const todos = (data || []).filter(p => p.id !== profile.id && (profile.es_super || p.role !== 'super_admin'));
-  holder.innerHTML = `<div class="card"><p class="ck-hint">Aquí le das un perfil a una cuenta que ya existe (la persona crea su cuenta con su correo y tú le asignas el perfil). Solo un administrador puede hacer estos cambios.${profile.es_super ? ' Como super administrador, solo tú puedes crear otros administradores: tendrán todo lo que tienes tú, pero no podrán crear ni quitar administradores.' : ''}</p>
+  const todos = (data || []).filter(p => p.id !== profile.id && (profile.es_super || p.role !== 'super_admin') && (profile.role !== 'ceo' || p.role !== 'ceo'));
+  holder.innerHTML = `<div class="card"><p class="ck-hint">Asigna un rol operativo a una cuenta existente.${profile.es_super ? ' Como super administrador puedes crear otros administradores.' : ''}</p>
     <input type="text" id="gp-buscar" placeholder="Buscar persona por nombre..." autocomplete="off"><div id="gp-lista"></div></div>`;
   const lista = $('#gp-lista');
   const pintar = () => {

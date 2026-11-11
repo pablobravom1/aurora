@@ -3579,10 +3579,18 @@ async function renderBuzonOpiniones(holderId){
     ? opiniones.map(o => `
       <div class="session-card">
         <div class="session-head"><span>${escapeHtml(o.profiles ? o.profiles.nombre : 'Alumno')}</span><span>${formatDateShort(o.created_at.slice(0,10))}</span></div>
-        <div class="session-body"><div class="sub" style="margin-bottom:0;">${escapeHtml(o.mensaje)}</div></div>
+        <div class="session-body"><div class="sub" style="margin-bottom:0;">${escapeHtml(o.mensaje)}</div>
+        ${profile.role === 'ceo' ? `<button type="button" class="btn-sm" data-borrar-sugerencia="${escapeHtml(o.id)}">Eliminar sugerencia</button>` : ''}</div>
       </div>
     `).join('')
     : `<div class="empty">Todavía no hay mensajes en el buzón.</div>`;
+  holder.querySelectorAll('[data-borrar-sugerencia]').forEach(btn => btn.onclick = async () => {
+    if(!confirm('¿Eliminar esta sugerencia del buzón?')) return;
+    btn.disabled = true;
+    const { error } = await sb.from('opiniones').delete().eq('id',btn.dataset.borrarSugerencia).select('id').single();
+    if(error){ btn.disabled = false; showToast('No se pudo eliminar la sugerencia.'); return; }
+    if(holder.isConnected) renderBuzonOpiniones(holderId);
+  });
 }
 
 function progresoDatosEjercicio(sesiones, ejercicio){
@@ -5752,7 +5760,7 @@ async function descargarPDFEstadoProtocolos(profesores, alumnos){
   doc.save(`Estado_protocolos_${todayStr()}.pdf`);
 }
 
-async function renderCoachAlumnoDetail(alumnoId){
+async function renderCoachAlumnoDetail(alumnoId, volver){
   root().innerHTML = `<div class="loading">Cargando...</div>`;
   const [{ data: alumno }, { data: sesiones }, { data: rutina }, { data: historial }, { data: medicionesUltima }] = await Promise.all([
     sb.from('profiles').select('*').eq('id', alumnoId).single(),
@@ -5762,6 +5770,7 @@ async function renderCoachAlumnoDetail(alumnoId){
     sb.from('mediciones').select('fecha, tipo').eq('alumno_id', alumnoId).order('fecha', { ascending:false }).limit(1)
   ]);
 
+  if(!alumno){ showToast('No se pudo cargar la ficha del alumno.'); return (volver || renderCoachHome)(); }
   const todasSesiones = markPRs(sesiones || []);
   const conSeries = todasSesiones.filter(s => (s.sesion_series||[]).length > 0);
   const fechas = conSeries.map(s => s.fecha);
@@ -5772,7 +5781,7 @@ async function renderCoachAlumnoDetail(alumnoId){
   // Modo observador: un profesor que no es el asignado a este alumno puede entrar a mirar
   // (por ejemplo si el profe titular faltó), pero no puede crear, editar ni eliminar nada.
   const soloObservador = profile.role === 'profesor' && alumno.profesor_id !== profile.id;
-  const esSuperAdmin = esGestor();
+  const esSuperAdmin = esGestor() || profile.role === 'ceo';
 
   root().innerHTML = `
     <div class="header-actions">
@@ -5872,7 +5881,7 @@ async function renderCoachAlumnoDetail(alumnoId){
       <button class="btn-sm btn-eliminar-sesion" id="btn-eliminar-alumno" style="margin-top:10px; width:100%; justify-content:center;">Eliminar alumno</button>
     ` : ''}
   `;
-  document.getElementById('btn-volver').onclick = renderCoachHome;
+  document.getElementById('btn-volver').onclick = volver || renderCoachHome;
   if(esSuperAdmin){
     const btnEditarNombre = document.getElementById('btn-editar-nombre-alumno');
     if(btnEditarNombre){

@@ -50,6 +50,9 @@
   .cx-ctr .cx-alumnos-cta{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 14px;background:#ffdf4a;color:#171300;border:1px solid #ffe580;border-radius:12px;font-weight:800;box-shadow:0 3px 12px #ffdf4a24}
   .cx-ctr .cx-alumnos-cta:hover{background:#ffe879;color:#171300}
   .cx-ctr .cx-alumnos-cta:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  .cx-gestion-nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 16px}
+  .cx-gestion-nav button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;text-align:center}
+  .cx-gestion-nav button:focus-visible{outline:2px solid #ffdf4a;outline-offset:3px}
   .cx-vivo{display:inline-flex;align-items:center;gap:7px;font:600 11px 'IBM Plex Mono',monospace;color:var(--cx-ok);background:rgba(94,227,182,.1);border:1px solid rgba(94,227,182,.3);border-radius:99px;padding:5px 11px;white-space:nowrap}
   .cx-vivo i{width:7px;height:7px;border-radius:50%;background:var(--cx-ok);animation:cxPulso 1.8s infinite}
   @keyframes cxPulso{70%{box-shadow:0 0 0 7px rgba(94,227,182,0)}100%{box-shadow:0 0 0 0 rgba(94,227,182,0)}}
@@ -214,11 +217,21 @@
           ${esCeo ? `<button type="button" class="switch-user" id="btn-logout">${IC('logout')} Salir</button>` : `<button type="button" class="switch-user" id="cx-volver">${IC('arrowLeft')} Volver</button>`}
         </div>
       </div>
+      ${esCeo ? `<nav class="cx-gestion-nav" aria-label="Gestión de la sede">
+        <button type="button" class="switch-user" id="cx-gestion-profesores">${IC('users')} Gestión de profesores</button>
+        <button type="button" class="switch-user" id="cx-gestion-buzon">${IC('message')} Buzón de sugerencias</button>
+        <button type="button" class="switch-user" id="cx-gestion-roles">${IC('users')} Perfiles y roles</button>
+      </nav>` : ''}
       <div id="cx-cuerpo"><div class="loading">Cargando el panel...</div></div>
     </div>`;
     const lo = $id('btn-logout'); if(lo && typeof handleLogout === 'function') lo.onclick = handleLogout;
     const vo = $id('cx-volver'); if(vo) vo.onclick = () => renderCoachHome();
     const alumnos = $id('cx-alumnos'); if(alumnos) alumnos.onclick = renderAlumnosCeo;
+    if(esCeo){
+      $id('cx-gestion-profesores').onclick = () => renderGestionCeo('profesores');
+      $id('cx-gestion-buzon').onclick = () => renderGestionCeo('buzon');
+      $id('cx-gestion-roles').onclick = () => renderGestionCeo('roles');
+    }
     $id('cx-act').onclick = () => renderPanelCeo();
     try{ await cargarDatos(); }
     catch(err){ $id('cx-cuerpo').innerHTML = vacio('No se pudo cargar el panel.<br><small>' + esc(err && err.message || '') + '</small>'); return; }
@@ -228,6 +241,37 @@
     sel.innerHTML = meses.map(m => `<option value="${m}" ${m === S.mes ? 'selected' : ''}>${mesLargo(m)}</option>`).join('');
     sel.onchange = () => { S.mes = sel.value; pintar(); };
     pintar();
+  }
+
+  async function renderGestionCeo(seccion){
+    if(!esRol('ceo')) return;
+    const titulos = { profesores:'Gestión de profesores', buzon:'Buzón de sugerencias', roles:'Perfiles y roles' };
+    if(!Object.hasOwn(titulos,seccion)) return;
+    S.charts.forEach(chart => chart.destroy());
+    S.charts = [];
+    root().innerHTML = `<div class="cx">
+      <div class="cx-top"><div><small>PANEL CEO</small><b>${esc(titulos[seccion])}</b></div>
+      <button type="button" class="switch-user" id="cx-gestion-volver">${IC('arrowLeft')} Volver al panel</button></div>
+      <div id="cx-gestion-contenido"><div class="loading" role="status">Cargando...</div></div>
+    </div>`;
+    $id('cx-gestion-volver').onclick = renderPanelCeo;
+    const holder = $id('cx-gestion-contenido');
+    try {
+      if(seccion === 'buzon') return await renderBuzonOpiniones(holder.id);
+      if(seccion === 'roles') return await window.montarGestionPerfiles(holder.id);
+      const [profesores, alumnos] = await Promise.all([
+        sb.from('profiles').select('id,nombre').eq('role','profesor').order('nombre'),
+        sb.rpc('stc_ceo_alumnos_gestion')
+      ]);
+      if(profesores.error || alumnos.error) throw profesores.error || alumnos.error;
+      if(!holder.isConnected || !esRol('ceo')) return;
+      renderGestionProfesores(holder.id, profesores.data || [], (alumnos.data || []).map(a => ({
+        id:a.id, nombre:a.alumno, role:'alumno', profesor_id:a.profesor_id, ultima:a.ultima_sesion,
+        rutinaFecha:a.rutina_fecha, medicionFecha:a.medicion_fecha, medicionTipo:a.medicion_tipo
+      })), () => renderGestionCeo('profesores'));
+    } catch(_err) {
+      if(holder.isConnected) holder.innerHTML = vacio('No se pudo cargar esta sección.');
+    }
   }
 
   async function renderAlumnosCeo(){
@@ -242,8 +286,12 @@
     $id('cx-alumnos-volver').onclick = renderPanelCeo;
     const cont = $id('cx-alumnos-contenido');
     try {
-      const { data, error } = await sb.rpc('stc_ceo_alumnos');
+      const [{ data, error }, profes] = await Promise.all([
+        sb.rpc('stc_ceo_alumnos_gestion'),
+        sb.from('profiles').select('id,nombre').eq('role','profesor').order('nombre')
+      ]);
       if(error) throw error;
+      if(profes.error) throw profes.error;
       if(!cont.isConnected || !esRol('ceo')) return;
       const lista = data || [];
       const sinProfesor = 'Sin profesor asignado';
@@ -280,17 +328,34 @@
         <select id="cx-alumnos-profesor" aria-label="Profesor"><option value="">Todos los profesores</option>${profesores.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}</select>
         <label style="margin:0"><input type="checkbox" id="cx-alumnos-pendientes"> Con protocolos pendientes</label>
       </div><p class="cx-sb" id="cx-alumnos-total" role="status"></p>
-      <div class="cx-tw"><table class="cx-tb"><thead><tr><th>Alumno</th><th>Profesor</th><th>Última sesión</th><th>Entrevista inicial</th><th>Medición</th><th>Rutina activa</th><th>Mesociclo</th></tr></thead>
+      <div class="cx-tw"><table class="cx-tb"><thead><tr><th>Alumno</th><th>Profesor</th><th>Última sesión</th><th>Entrevista inicial</th><th>Medición</th><th>Rutina activa</th><th>Mesociclo</th><th>Ficha</th></tr></thead>
       <tbody id="cx-alumnos-filas"></tbody></table></div>`;
       const buscar = $id('cx-alumnos-buscar'), profesor = $id('cx-alumnos-profesor'), filtrar = $id('cx-alumnos-pendientes');
       const pintarAlumnos = () => {
         const q = normalizar(buscar.value);
         const filas = lista.filter(a => normalizar(a.alumno).includes(q) && (!profesor.value || (a.profesor || sinProfesor) === profesor.value) && (!filtrar.checked || pendientes(a)));
         $id('cx-alumnos-total').textContent = `${filas.length} de ${lista.length} alumnos con cuenta en STC App`;
-        $id('cx-alumnos-filas').innerHTML = filas.length ? filas.map(a => `<tr><td>${esc(a.alumno || 'Sin nombre')}</td><td>${esc(a.profesor || sinProfesor)}</td>
+        const tabla = $id('cx-alumnos-filas');
+        tabla.innerHTML = filas.length ? filas.map((a,i) => `<tr><td>${esc(a.alumno || 'Sin nombre')}</td><td><select data-asignar="${i}" aria-label="Profesor de ${esc(a.alumno)}"><option value="">Sin profesor</option>${(profes.data || []).map(p => `<option value="${esc(p.id)}" ${p.id === a.profesor_id ? 'selected' : ''}>${esc(p.nombre)}</option>`).join('')}</select></td>
           <td>${a.ultima_sesion ? esc(fCorta(a.ultima_sesion)) : 'Sin sesiones'}</td><td>${chip(a.entrevista_estado, a.entrevista_fecha)}</td>
           <td>${chip(statusMedicion(a), a.medicion_fecha)}</td><td>${chip(medirEstado(a.rutina_fecha, 30), a.rutina_fecha)}</td>
-          <td>${chip(statusCiclo(a), a.mesociclo_inicio)}</td></tr>`).join('') : '<tr><td colspan="7">Sin resultados para los filtros elegidos.</td></tr>';
+          <td>${chip(statusCiclo(a), a.mesociclo_inicio)}</td><td><button type="button" class="btn-sm" data-ficha="${i}">Abrir ficha</button></td></tr>`).join('') : '<tr><td colspan="8">Sin resultados para los filtros elegidos.</td></tr>';
+        tabla.querySelectorAll('[data-ficha]').forEach(btn => btn.onclick = () => renderCoachAlumnoDetail(filas[Number(btn.dataset.ficha)].id, renderAlumnosCeo));
+        tabla.querySelectorAll('[data-asignar]').forEach(sel => sel.onchange = async () => {
+          const alumno = filas[Number(sel.dataset.asignar)];
+          const nuevo = sel.value || null;
+          sel.disabled = true;
+          try {
+            const { error: fallo } = await sb.from('profiles').update({profesor_id:nuevo}).eq('id',alumno.id).select('id').single();
+            if(fallo) throw fallo;
+            alumno.profesor_id = nuevo;
+            alumno.profesor = (profes.data || []).find(p => p.id === nuevo)?.nombre || null;
+            if(cont.isConnected) await renderAlumnosCeo();
+          } catch(_err) {
+            sel.value = alumno.profesor_id || '';
+            showToast('No se pudo cambiar el profesor.');
+          } finally { sel.disabled = false; }
+        });
       };
       buscar.oninput = profesor.onchange = filtrar.onchange = pintarAlumnos;
       pintarAlumnos();
