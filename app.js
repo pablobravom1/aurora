@@ -33,88 +33,26 @@ const root = () => document.getElementById('app-root');
 // ---------- BANCO DE EJERCICIOS ----------
 // Primera colección visual de STC App. Las referencias son imágenes fijas;
 // los videos se podrán activar más adelante agregando una URL de YouTube.
-const EXERCISE_BANK = [
-  { name:'Press banca', aliases:['press de banca','barbell bench press'], group:'Pecho', image:'press-banca.webp', youtubeUrl:'' },
-  { name:'Press pecho en máquina', aliases:['press de pecho en maquina','chest press','machine chest press'], group:'Pecho', image:'press-pecho-maquina.webp', youtubeUrl:'' },
-  { name:'Cruce de poleas', aliases:['cruce poleas','cable crossover','crossover'], group:'Pecho', image:'cruce-poleas.webp', youtubeUrl:'' },
-  { name:'Press plano con mancuernas', aliases:['press con mancuernas','dumbbell chest press'], group:'Pecho', image:'press-plano-mancuernas.webp', youtubeUrl:'https://youtube.com/shorts/908F5mH2V0c?si=rTQuYgNB-QEoZz-5' },
-  { name:'Press inclinado con mancuernas', aliases:['press inclinado mancuernas','incline dumbbell press'], group:'Pecho', image:'press-inclinado-mancuernas.webp', youtubeUrl:'' },
-  { name:'Press inclinado con barra', aliases:['press inclinado barra','incline barbell press'], group:'Pecho', image:'press-inclinado-barra.webp', youtubeUrl:'' },
-  { name:'Aperturas con mancuernas', aliases:['aperturas pecho','dumbbell fly','fly con mancuernas'], group:'Pecho', image:'aperturas-mancuernas.webp', youtubeUrl:'' },
-  { name:'Aperturas en máquina', aliases:['aperturas en maquina','pec deck','peck deck','contractora de pecho','machine chest fly'], group:'Pecho', image:'aperturas-maquina.webp', youtubeUrl:'' },
-  { name:'Flexiones de brazos', aliases:['flexiones','lagartijas','push up','push-up'], group:'Pecho', image:'flexiones.webp', youtubeUrl:'' },
-  { name:'Extensión tríceps', aliases:['extension de triceps','extensión de tríceps','triceps pushdown','jalon de triceps'], group:'Tríceps', image:'extension-triceps.webp', youtubeUrl:'https://youtube.com/shorts/BRlRvjPGIMM?si=vycbThqacOUQS_Tk' },
-  { name:'Press francés', aliases:['press frances','lying triceps extension','extensión de tríceps acostado'], group:'Tríceps', image:'press-frances.webp', youtubeUrl:'' },
-  { name:'Fondos en paralelas', aliases:['fondos','dips','parallel bar dips','fondos de triceps'], group:'Tríceps', image:'fondos-paralelas.webp', youtubeUrl:'' },
-  { name:'Extensión de tríceps sobre la cabeza', aliases:['extension de triceps sobre la cabeza','extension sobre la cabeza','overhead triceps extension','triceps con mancuerna'], group:'Tríceps', image:'extension-triceps-cabeza.webp', youtubeUrl:'' },
-  { name:'Vuelos laterales', aliases:['vuelo lateral','elevaciones laterales','lateral raise'], group:'Hombros', image:'vuelos-laterales.webp', youtubeUrl:'https://youtube.com/shorts/O37pNSL4aFg?si=VxYffD4k1fRBK-ok' },
-  { name:'Press militar con barra', aliases:['press militar','overhead press','barbell shoulder press'], group:'Hombros', image:'press-militar-barra.webp', youtubeUrl:'https://youtube.com/shorts/6Rwe-9LjnPM?si=6_NGcINP_fXLgiiG' },
-  { name:'Press militar con mancuernas', aliases:['press de hombros con mancuernas','press hombros mancuernas','press militar sentado','press militar sentado con mancuernas','dumbbell shoulder press','seated dumbbell shoulder press'], group:'Hombros', image:'press-militar-mancuernas.png', youtubeUrl:'https://youtube.com/shorts/rxO8QA23ha8?si=UurCtQ8ZiRJhRqNG' },
-  { name:'Pájaros con mancuernas', aliases:['pajaros','vuelos posteriores','reverse fly','rear delt fly'], group:'Hombros', image:'pajaros-mancuernas.webp', youtubeUrl:'' },
-  { name:'Face pull', aliases:['tiron a la cara','tirón a la cara','face pull con cuerda','jalon a la cara'], group:'Hombros', image:'face-pull.webp', youtubeUrl:'' },
-  { name:'Elevaciones frontales', aliases:['elevacion frontal','elevación frontal','front raise'], group:'Hombros', image:'elevaciones-frontales.webp', youtubeUrl:'' },
-  { name:'Press Arnold', aliases:['arnold press'], group:'Hombros', image:'press-arnold.webp', youtubeUrl:'' },
-  { name:'Sentadilla con barra', aliases:['sentadilla barra','sentadilla libre','barbell squat','back squat'], group:'Piernas', image:'sentadilla-barra.webp', youtubeUrl:'https://youtube.com/shorts/dy6QWGmEQ9k?si=NqprmkhmClboJ1x1' },
-  { name:'Sentadilla en Smith', aliases:['sentadilla smith','smith squat','sentadilla en multipower'], group:'Piernas', image:'sentadilla-smith.webp', youtubeUrl:'' },
-  { name:'Sentadilla en Smith con banda elástica', aliases:['sentadilla smith con banda','smith squat con banda','banded smith squat','sentadilla en multipower con banda'], group:'Piernas', image:'sentadilla-smith-banda.webp', youtubeUrl:'' },
-  { name:'Sentadilla con cajón', aliases:['sentadilla cajon','sentadilla al cajon','box squat','barbell box squat'], group:'Piernas', image:'sentadilla-cajon.webp', youtubeUrl:'' },
-  { name:'Sentadilla isométrica', aliases:['sentadilla isometrica','wall sit','sentadilla contra la pared','silla en pared'], group:'Piernas', image:'sentadilla-isometrica.jpg', youtubeUrl:'' },
-  { name:'Prensa de piernas', aliases:['prensa piernas','leg press','prensa inclinada','prensa 45 grados'], group:'Piernas', image:'prensa-piernas.webp', youtubeUrl:'' },
-  { name:'Extensión de cuádriceps', aliases:['extension de cuadriceps','extensión de piernas','leg extension','machine leg extension'], group:'Piernas', image:'extension-cuadriceps.webp', youtubeUrl:'' },
-  { name:'Zancadas con mancuernas', aliases:['zancada','zancadas','estocadas','lunges','dumbbell forward lunge'], group:'Piernas', image:'zancadas.webp', youtubeUrl:'' },
-  { name:'Sentadilla búlgara', aliases:['sentadilla bulgara','bulgara','bulgarian split squat','zancada bulgara'], group:'Piernas', image:'sentadilla-bulgara.webp', youtubeUrl:'' },
-  { name:'Sentadilla goblet', aliases:['goblet squat','sentadilla con mancuerna','sentadilla copa'], group:'Piernas', image:'sentadilla-goblet.webp', youtubeUrl:'' },
-  { name:'Sentadilla sumo con mancuerna', aliases:['sentadilla sumo','sumo squat','dumbbell sumo squat','sentadilla sumo mancuerna'], group:'Piernas', image:'sentadilla-sumo-mancuerna.webp', youtubeUrl:'https://youtube.com/shorts/N8tdyCvTCVc?si=i1_KrCrWyxCX74ge' },
-  { name:'Hack squat', aliases:['sentadilla hack','jaca','hack squat machine'], group:'Piernas', image:'hack-squat.webp', youtubeUrl:'' },
-  { name:'Elevación de talones', aliases:['elevacion de talones','pantorrillas','gemelos','calf raise','standing calf raise'], group:'Pantorrillas', image:'elevacion-talones.webp', youtubeUrl:'' },
-  { name:'Peso muerto', aliases:['deadlift','peso muerto convencional'], group:'Posterior', image:'peso-muerto.webp', youtubeUrl:'' },
-  { name:'Peso muerto sumo', aliases:['sumo deadlift','peso muerto estilo sumo'], group:'Posterior', image:'peso-muerto-sumo.webp', youtubeUrl:'' },  { name:'Peso muerto rumano', aliases:['rumano','romanian deadlift','RDL'], group:'Posterior', image:'peso-muerto-rumano.webp', youtubeUrl:'' },
-  { name:'Peso muerto con barra hexagonal con salto', aliases:['barra hexagonal con salto','salto con barra hexagonal','trap bar jump','hex bar jump','trap bar jump squat'], group:'Posterior', image:'barra-hexagonal-salto.webp', youtubeUrl:'https://youtube.com/shorts/4q06PF5sOh4?si=pRLyb0-sTJ4LguDk' },
-  { name:'Hiperextensiones', aliases:['extensiones lumbares','back extension','banco romano'], group:'Posterior', image:'hiperextensiones.webp', youtubeUrl:'' },
-  { name:'Curl femoral sentado', aliases:['flexión femoral sentada','flexion femoral sentado','press femoral sentado','seated leg curl'], group:'Posterior', image:'curl-femoral-sentado.webp', youtubeUrl:'' },
-  { name:'Curl femoral acostado', aliases:['curl femoral','flexión femoral en camilla','flexion femoral en camilla','leg curl','femorales en máquina','femorales en maquina','prone leg curl'], group:'Posterior', image:'curl-femoral.webp', youtubeUrl:'https://youtube.com/shorts/phvoOZyrf98?si=O-F0_Q_lKI8zVDLW' },
-    { name:'Hip thrust en Smith', aliases:['smith hip thrust','hip thrust multipower','empuje de cadera en smith','puente de glúteo en smith'], group:'Glúteos', image:'hip-thrust-smith.webp', youtubeUrl:'' },
-    { name:'Hip thrust', aliases:['empuje de cadera','puente de gluteo con barra','puente de glúteo con barra','barbell hip thrust'], group:'Glúteos', image:'hip-thrust.webp', youtubeUrl:'' },
-    { name:'Abducción de cadera', aliases:['abduccion de cadera','abductores','abductores en máquina','abductores en maquina','hip abduction','seated hip abduction'], group:'Glúteos', image:'abduccion-cadera.webp', youtubeUrl:'https://youtube.com/shorts/UiiANdwE-Qk?si=VCY2k4wYR_GtFSzC' },
-        { name:'Aducción de cadera', aliases:['aduccion de cadera','aductores','aductores en máquina','aductores en maquina','hip adduction','seated hip adduction'], group:'Piernas', image:'aduccion-cadera.webp', youtubeUrl:'https://youtube.com/shorts/OGI8s6N9iYU?si=D2t-x9Iy63Ve9T7d' },
-    { name:'Patada de glúteo en polea', aliases:['patada gluteo','patada de gluteo','glute kickback','cable kickback'], group:'Glúteos', image:'patada-gluteo-polea.webp', youtubeUrl:'https://youtube.com/shorts/UzJUYWN19qg?si=w2wzQTjRsm2X9b6c' },
-    { name:'Curl de bíceps con barra', aliases:['curl con barra','barbell curl','curl biceps barra'], group:'Bíceps', image:'curl-biceps-barra.webp', youtubeUrl:'https://youtube.com/shorts/fjjf-Lmb7XA?si=8ECnAAM6vb5iF_Vc' },
-  { name:'Curl con mancuernas', aliases:['curl alterno','dumbbell curl','curl de biceps con mancuernas'], group:'Bíceps', image:'curl-mancuernas.webp', youtubeUrl:'https://youtube.com/shorts/PdTbx71_HH0?si=uS-GB1iXjPlS4uma' },
-    { name:'Curl martillo', aliases:['martillo','hammer curl','curl de martillo'], group:'Bíceps', image:'curl-martillo.webp', youtubeUrl:'https://youtube.com/shorts/rVi0b8ZzbXI?si=S2BmKNNz27W4Sp3i' },
-    { name:'Curl predicador', aliases:['curl scott','preacher curl'], group:'Bíceps', image:'curl-predicador.webp', youtubeUrl:'' },
-    { name:'Curl en polea', aliases:['cable curl','curl en polea baja'], group:'Bíceps', image:'curl-polea.webp', youtubeUrl:'https://youtube.com/shorts/OkTGdtsjwig?si=XfASiidxKnFlTW0a' },
-    { name:'Plancha', aliases:['plancha abdominal','plank','forearm plank','plancha sobre antebrazos'], group:'Core', image:'plancha.webp', youtubeUrl:'' },
-    { name:'Crunch abdominal', aliases:['crunch','abdominales','abdominal corto','floor crunch'], group:'Core', image:'crunch.webp', youtubeUrl:'' },
-    { name:'Elevación de piernas colgado', aliases:['elevacion de piernas','elevación piernas','hanging leg raise'], group:'Core', image:'elevacion-piernas.webp', youtubeUrl:'' },
-    { name:'Rueda abdominal', aliases:['ab wheel','rodillo abdominal'], group:'Core', image:'rueda-abdominal.webp', youtubeUrl:'' },
-  { name:'Remo con mancuerna', aliases:['remo con mancuernas','dumbbell row','remo unilateral'], group:'Espalda', image:'remo-mancuerna.webp', youtubeUrl:'https://youtube.com/shorts/ZjzSSMTrxY0?si=2WA_EbJ0k_t7IRUd' },
-  { name:'Remo frontal en polea', aliases:['remo en polea','seated cable row','remo sentado'], group:'Espalda', image:'remo-frontal-polea.webp', youtubeUrl:'https://youtube.com/shorts/4KwdXP-j_Uw?si=VzToHwJCQL_rLgJA' },
-  { name:'Pull down', aliases:['pulldown','lat pulldown','jalón al pecho','jalon al pecho'], group:'Espalda', image:'pull-down.webp', youtubeUrl:'' },
-  { name:'Dominadas', aliases:['dominada','pull up','pull-up'], group:'Espalda', image:'dominadas.webp', youtubeUrl:'https://youtube.com/shorts/JK5heVfCSy8?si=QaZ1_Ds0wWvk7Mk0' },
-  { name:'Remo con barra', aliases:['barbell row','remo inclinado con barra'], group:'Espalda', image:'remo-barra.webp', youtubeUrl:'https://youtube.com/shorts/SLduniTLvzM?si=RwWXN2VJjaVI62Fm' },
-  { name:'Remo en máquina', aliases:['machine row','remo sentado en maquina','remo máquina'], group:'Espalda', image:'remo-maquina.webp', youtubeUrl:'https://youtube.com/shorts/CAV10isKw-k?si=z_9fem6VsZriBVEy' },
-  { name:'Pullover en polea', aliases:['pullover polea','straight arm pulldown','jalón brazos rectos'], group:'Espalda', image:'pullover-polea.webp', youtubeUrl:'' }
-  ,{ name:'Encogimientos con mancuernas', aliases:['trapecio','shrugs','dumbbell shrug'], group:'Espalda', image:'encogimientos.webp', youtubeUrl:'' }
-  ,{ name:'Remo T', aliases:['remo en t','t-bar row','landmine row'], group:'Espalda', image:'remo-t.webp', youtubeUrl:'https://youtube.com/shorts/UW5FEr7S_3A?si=NfPHs-lfV3F8FLJy' }
-  ,{ name:'Remo al mentón', aliases:['remo al menton','remo al mentón con barra','remo al menton con barra','upright row','barbell upright row'], group:'Hombros', image:'remo-al-menton.webp', youtubeUrl:'' }
-  ,{ name:'Zancada con salto con landmine', aliases:['zancadas con salto con landmine','zancada alternada con salto con landmine','zancada con salto landmine','landmine split squat jump','landmine alternating split squat jump'], group:'Piernas', image:'zancada-salto-landmine.webp', youtubeUrl:'' }
-  ,{ name:'Skipping lateral', aliases:['skipping de lado','skip lateral','lateral skip','lateral skipping','skipping sideways'], group:'Funcional', image:'skipping-lateral.webp', youtubeUrl:'' }
-  ,{ name:'Press Pallof', aliases:['press palof','press pallof','pallof press','palof press','press pallof en polea','press antirotación','press antirotacion'], group:'Core', image:'press-pallof.webp', youtubeUrl:'' }
-  ,{"name":"Elevación de piernas en el suelo","aliases":["elevacion de piernas acostado","elevacion de piernas en suelo","abdominal piernas en el suelo","lying leg raise"],"group":"Core","image":"elevacion-piernas-suelo.webp","youtubeUrl":""}
-  ,{"name":"Giro ruso","aliases":["giros rusos","russian twist","rotacion para oblicuos sentado","rotacion de oblicuos sentado"],"group":"Core","image":"giro-ruso.webp","youtubeUrl":""}
-  ,{"name":"Rotación de tronco en polea","aliases":["rotacion para oblicuos en polea","rotacion de oblicuos en polea","rotacion en polea de pie","cable torso rotation"],"group":"Core","image":"rotacion-tronco-polea.webp","youtubeUrl":""}
-  ,{"name":"Battle rope","aliases":["battle ropes","battle-rope","cuerdas de batalla","cuerda de batalla","ondas con cuerdas"],"group":"Funcional","image":"battle-rope.webp","youtubeUrl":""}
-  ,{"name":"Sentadilla en BOSU","aliases":["sentadilla bosu","sentadillas en bosu","bosu squat"],"group":"Piernas","image":"sentadilla-bosu.webp","youtubeUrl":""}
-  ,{"name":"Elevación de cadera en el suelo","aliases":["elevacion de cadera","puente de gluteos en el suelo","puente de gluteo en suelo","puente de gluteos","glute bridge"],"group":"Glúteos","image":"elevacion-cadera-suelo.webp","youtubeUrl":""}
-];
+const EXERCISE_BANK = window.STCAkadiaBanco;
+const STC_LEGACY_EXERCISES = [{"name":"Aducción de cadera","aliases":["aduccion de cadera","aductores","aductores en máquina","aductores en maquina","hip adduction","seated hip adduction"],"group":"Piernas","image":"aduccion-cadera.webp","youtubeUrl":"https://youtube.com/shorts/OGI8s6N9iYU?si=D2t-x9Iy63Ve9T7d"},{"name":"Rotación de tronco en polea","aliases":["rotacion para oblicuos en polea","rotacion de oblicuos en polea","rotacion en polea de pie","cable torso rotation"],"group":"Core","image":"rotacion-tronco-polea.webp","youtubeUrl":""},{"name":"Sentadilla en BOSU","aliases":["sentadilla bosu","sentadillas en bosu","bosu squat"],"group":"Piernas","image":"sentadilla-bosu.webp","youtubeUrl":""},{"name":"Elevación de cadera en el suelo","aliases":["elevacion de cadera","puente de gluteos en el suelo","puente de gluteo en suelo","puente de gluteos","glute bridge"],"group":"Glúteos","image":"elevacion-cadera-suelo.webp","youtubeUrl":""}];
 
 function normalizeExerciseName(value){
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
+const exerciseBankByName = new Map();
+const exerciseBankByAlias = new Map();
+for (const item of [...EXERCISE_BANK, ...STC_LEGACY_EXERCISES]) {
+  exerciseBankByName.set(normalizeExerciseName(item.name), item);
+  for (const alias of item.aliases || []) {
+    const key = normalizeExerciseName(alias);
+    if (!exerciseBankByAlias.has(key)) exerciseBankByAlias.set(key, item);
+  }
+}
+function exerciseBankJsArg(value){ return escapeHtml(JSON.stringify(String(value))); }
 function findExerciseBankEntry(name){
   const target = normalizeExerciseName(name);
   if(!target) return null;
-  return EXERCISE_BANK.find(item => [item.name, ...(item.aliases || [])].some(alias => normalizeExerciseName(alias) === target)) || null;
+  return exerciseBankByName.get(target) || exerciseBankByAlias.get(target) || null;
 }
 function exerciseBankSelectOptionsHtml(){
   return [...new Set(EXERCISE_BANK.map(item => item.group))].map(group => `<optgroup label="${escapeHtml(group)}">${EXERCISE_BANK.filter(item => item.group === group).map(item => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`).join('')}</optgroup>`).join('');
@@ -174,9 +112,9 @@ function exerciseBankSelectorHtml(d, e, value){
       <div class="exercise-bank-search-wrap">${ICONS.search}<input class="exercise-bank-search" type="search" placeholder="Buscar ejercicio" aria-label="Buscar ejercicio" oninput="filterExerciseBank(${d},${e},this.value)"></div>
       <div class="exercise-bank-options" role="listbox">
         ${groups.map(group => `<section class="exercise-bank-group"><div class="exercise-bank-group-title">${escapeHtml(group)}</div>${EXERCISE_BANK.filter(item => item.group === group).map(item => {
-          const jsName = item.name.replace(/'/g, "\\'");
+          const jsName = exerciseBankJsArg(item.name);
           const search = [item.name, ...(item.aliases || []), item.group].join(' ');
-          return `<button type="button" class="exercise-bank-option" role="option" data-search="${escapeHtml(search)}" onclick="seleccionarEjercicioBanco(${d},${e},'${jsName}',event)"><img src="${escapeHtml(item.image)}" alt=""><span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.group)}</small></span>${ICONS.chevronRight}</button>`;
+          return `<button type="button" class="exercise-bank-option" role="option" data-search="${escapeHtml(search)}" onclick="seleccionarEjercicioBanco(${d},${e},${jsName},event)">${item.image ? `<img src="${escapeHtml(item.image)}" alt="" loading="lazy" decoding="async">` : `<span class="red-img-vacia" aria-hidden="true">${ICONS.clipboard}</span>`}<span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.group)}</small></span>${ICONS.chevronRight}</button>`;
         }).join('')}</section>`).join('')}
       </div>
     </div>
@@ -194,9 +132,9 @@ function simpleExerciseBankHtml(prefix, selected){
     <div class="simple-bank-panel hidden" id="${prefix}-panel">
       <div class="simple-bank-title">${ICONS.search}<span><b>Banco de ejercicios</b><small id="${prefix}-bank-help">Toca un ejercicio para elegirlo</small></span></div>
       ${groups.map(group => `<section class="exercise-bank-group"><div class="exercise-bank-group-title">${escapeHtml(group)}</div>${EXERCISE_BANK.filter(item => item.group === group).map(item => {
-        const jsName = item.name.replace(/'/g, "\\'");
+        const jsName = exerciseBankJsArg(item.name);
         const search = [item.name, ...(item.aliases || []), item.group].join(' ');
-        return `<div class="exercise-bank-option-row" data-simple-search="${escapeHtml(search)}"><button type="button" class="exercise-bank-option" onclick="selectSimpleExercise('${prefix}','${jsName}',event)"><img src="${escapeHtml(item.image)}" alt=""><span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.group)}</small></span>${ICONS.chevronRight}</button>${renderWorkoutVideoIcon(item)}</div>`;
+        return `<div class="exercise-bank-option-row" data-simple-search="${escapeHtml(search)}"><button type="button" class="exercise-bank-option" onclick="selectSimpleExercise('${prefix}',${jsName},event)">${item.image ? `<img src="${escapeHtml(item.image)}" alt="" loading="lazy" decoding="async">` : `<span class="red-img-vacia" aria-hidden="true">${ICONS.clipboard}</span>`}<span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.group)}</small></span>${ICONS.chevronRight}</button>${renderWorkoutVideoIcon(item)}</div>`;
       }).join('')}</section>`).join('')}
       <div class="simple-bank-empty hidden" id="${prefix}-empty"><b>No está en el banco todavía</b><span>Puedes agregarlo igualmente escribiendo el nombre y usando el botón de abajo.</span></div>
     </div>
@@ -281,7 +219,15 @@ function openExerciseImage(src, name){
   viewer.setAttribute('role', 'dialog');
   viewer.setAttribute('aria-modal', 'true');
   viewer.setAttribute('aria-label', `Demostración de ${name}`);
-  viewer.innerHTML = `<button type="button" class="exercise-image-close" aria-label="Cerrar">×</button><figure><img src="${escapeHtml(src)}" alt="Referencia técnica de ${escapeHtml(name)}"><figcaption>${escapeHtml(name)} · referencia técnica</figcaption></figure>`;
+  const ficha = findExerciseBankEntry(name)?.ficha;
+  const section = (title, content) => content ? '<p><strong>' + title + '</strong><br>' + escapeHtml(content) + '</p>' : '';
+  const list = (title, items) => items?.length ? '<strong>' + title + '</strong><ul>' + items.map(item => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul>' : '';
+  const guide = ficha ? '<div style="padding:12px 16px;text-align:left;color:#fff;background:#1c2430">' +
+    section('Posición inicial', ficha.p) + list('Ejecución', ficha.e) + section('Respiración', ficha.r) +
+    list('Errores comunes', ficha.x) + section('Músculos', ficha.m) + '</div>' : '';
+  const photo = src ? '<img style="max-height:45dvh;object-fit:contain" src="' + escapeHtml(src) + '" alt="Referencia técnica de ' + escapeHtml(name) + '">' : '';
+  viewer.innerHTML = '<button type="button" class="exercise-image-close" aria-label="Cerrar">×</button><figure style="max-height:85dvh;overflow:auto">' +
+    photo + '<figcaption>' + escapeHtml(name) + '</figcaption>' + guide + '</figure>';
   viewer.onclick = (event) => { if(event.target === viewer || event.target.closest('.exercise-image-close')) viewer.remove(); };
   document.body.appendChild(viewer);
 }
@@ -1877,11 +1823,11 @@ function renderWorkoutVideoIcon(ex){
 }
 function renderExerciseThumbnail(ex){
   const entry = findExerciseBankEntry(ex && ex.nombre);
-  if(!entry) return '';
+  if(!entry || (!entry.image && !entry.ficha)) return '';
   const safeName = escapeHtml(entry.name);
-  const jsName = safeName.replace(/'/g, "\\'");
-  const jsImage = entry.image.replace(/'/g, "\\'");
-  return `<button type="button" class="routine-exercise-thumb" onclick="openExerciseImage('${jsImage}','${jsName}')" aria-label="Ampliar referencia técnica de ${safeName}"><img src="${escapeHtml(entry.image)}" alt="Referencia técnica de ${safeName}" loading="lazy"></button>`;
+  const jsName = exerciseBankJsArg(entry.name);
+  const jsImage = exerciseBankJsArg(entry.image);
+  return `<button type="button" class="routine-exercise-thumb" onclick="openExerciseImage(${jsImage},${jsName})" aria-label="Ampliar referencia técnica de ${safeName}">${entry.image ? `<img src="${escapeHtml(entry.image)}" alt="Referencia técnica de ${safeName}" loading="lazy">` : ICONS.book}</button>`;
 }
 function renderRoutineExercise(ex, index, lista){
   return `
@@ -6332,7 +6278,7 @@ function abrirBuscadorRutina(d, reemplazarE){
   };
   const filaHtml = (item, term, dentro) => `
     <button type="button" class="red-item" data-nombre="${escapeHtml(item.name)}">
-      <img src="${escapeHtml(item.image)}" alt="">
+      ${item.image ? `<img src="${escapeHtml(item.image)}" alt="" loading="lazy" decoding="async">` : `<span class="red-img-vacia" aria-hidden="true">${ICONS.clipboard}</span>`}
       <span class="red-item-txt"><b>${resaltar(item.name, term)}</b><small>${escapeHtml(item.group)}</small></span>
       <span class="red-item-mas ${dentro ? 'ok' : ''}">${dentro ? '✓' : '＋'}</span>
     </button>`;
