@@ -1,0 +1,31 @@
+/* Descanso accesible durante el registro de la rutina */
+.reg-descanso-sticky {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 42;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 8px;
+  padding: 4px 0;
+  background: var(--bg, #171717);
+}
+.reg-descanso-sticky [hidden] { display: none; }
+.reg-descanso-sticky button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #ffff66;
+  border-radius: 999px;
+  background: #242424;
+  color: #ffff66;
+  font: inherit;
+  cursor: pointer;
+}
+.reg-descanso-sticky button:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.reg-descanso-sticky [data-descanso-tiempo] { margin-inline-start: 5px; font-variant-numeric: tabular-nums; }
+.reg-descanso-sticky [data-descanso-controles]:not([hidden]) {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}

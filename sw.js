@@ -1,12 +1,12 @@
 // STC App — instalación, caché y notificaciones push.
 // No cachea datos de Supabase, solo el cascarón de la aplicación.
-const CACHE_NAME = 'stc-v19-banco-akadia-20261112';
+const CACHE_NAME = 'stc-v20-temporizador';
 const APP_SHELL = [
   "./stc-banco-akadia-0.js", "./stc-banco-akadia-1.js", "./stc-banco-akadia-2.js", "./stc-banco-akadia-3.js", "./stc-banco-akadia-4.js",
   "./elevacion-piernas-suelo.webp", "./giro-ruso.webp", "./rotacion-tronco-polea.webp", "./battle-rope.webp", "./sentadilla-bosu.webp", "./elevacion-cadera-suelo.webp",
   './google-button-brand.js',
   './google-login-entry.js', './acceso-google.html', './google-access.js', './google-access-page.js', './legal.css', './privacidad.html', './terminos.html',
-  './', './index.html', './styles.css', './roles.js', './app.js', './superseries-editor.js', './superseries-editor.css', './cargas-series.js', './cargas-series.css', './onboarding-stc.js', './clases-prueba-zunara.js', './calendario-pruebas.js', './calendario-pruebas.css', './config.js', './kilo.js', './manifest.json', './logo.png', './avatar-sprite-v2.png',
+  './', './index.html', './styles.css', './stc-descanso.css', './roles.js', './app.js', './superseries-editor.js', './superseries-editor.css', './cargas-series.js', './cargas-series.css', './onboarding-stc.js', './clases-prueba-zunara.js', './calendario-pruebas.js', './calendario-pruebas.css', './config.js', './kilo.js', './manifest.json', './logo.png', './avatar-sprite-v2.png',
   './avatar-original-01.webp', './avatar-original-02.webp', './avatar-original-03.webp', './avatar-original-04.webp', './avatar-original-05.webp',
   './avatar-original-06.webp', './avatar-original-07.webp', './avatar-original-08.webp', './avatar-original-09.webp', './avatar-original-10.webp'
 ];

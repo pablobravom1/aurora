@@ -2482,6 +2482,8 @@ function abrirSelectorDescanso(){
 
 function descansoIniciar(seg){
   if(window.UCKilo){ window.UCKilo.prepararAudio(); window.UCKilo.vibrar(30); }
+  clearTimeout(descansoAvisoTimer);
+  descansoGuardar(DESCANSO_KEY_PAUSA, null);
   descansoGuardar(DESCANSO_KEY_FIN, Date.now() + seg * 1000);
   descansoGuardar(DESCANSO_KEY_TOTAL, seg);
   descansoMostrarBarra();
@@ -2491,100 +2493,130 @@ function descansoIniciar(seg){
 // Si la app se recargó o se volvió a abrir el registro con un descanso en curso.
 function descansoReanudar(){
   const fin = Number(descansoLeer(DESCANSO_KEY_FIN));
+  if(Number(descansoLeer(DESCANSO_KEY_PAUSA))){ descansoMostrarBarra(); return; }
   if(!fin) return;
   if(fin - Date.now() < -60000){ descansoDetener(); return; } // terminó hace rato: se descarta
   descansoMostrarBarra();
 }
 
 function descansoMostrarBarra(){
-  let barra = document.getElementById('descanso-barra');
-  if(!barra){
-    barra = document.createElement('div');
-    barra.id = 'descanso-barra';
-    barra.className = 'descanso-barra';
-    barra.setAttribute('role', 'timer');
-    barra.innerHTML = `
-      <svg class="descanso-anillo" viewBox="0 0 44 44" aria-hidden="true">
-        <circle cx="22" cy="22" r="19" class="descanso-anillo-fondo"/>
-        <circle cx="22" cy="22" r="19" class="descanso-anillo-avance" id="descanso-anillo-avance"/>
-      </svg>
-      <div class="descanso-barra-texto">
-        <span class="descanso-barra-etiqueta" id="descanso-barra-etiqueta">Descansando</span>
-        <span class="descanso-barra-tiempo" id="descanso-barra-tiempo">0:00</span>
-      </div>
-      <div class="descanso-barra-acciones" id="descanso-barra-acciones">
-        <button type="button" class="descanso-mini" data-delta="-15" aria-label="Quitar 15 segundos">−15</button>
-        <button type="button" class="descanso-mini" data-delta="15" aria-label="Sumar 15 segundos">+15</button>
-        <button type="button" class="descanso-mini descanso-saltar" id="btn-saltar-descanso">Saltar</button>
-      </div>`;
-    document.body.appendChild(barra);
-    barra.querySelectorAll('.descanso-mini[data-delta]').forEach(b => b.onclick = () => {
-      const fin = Number(descansoLeer(DESCANSO_KEY_FIN));
-      const total = Number(descansoLeer(DESCANSO_KEY_TOTAL)) || 60;
-      if(!fin) return;
-      const delta = Number(b.dataset.delta) * 1000;
-      const nuevoFin = Math.max(Date.now() + 1000, fin + delta);
-      descansoGuardar(DESCANSO_KEY_FIN, nuevoFin);
-      descansoGuardar(DESCANSO_KEY_TOTAL, Math.max(5, total + Number(b.dataset.delta)));
-      descansoTick();
-    });
-    barra.querySelector('#btn-saltar-descanso').onclick = descansoDetener;
-  }
-  barra.classList.remove('termino', 'sale');
-  document.body.classList.add('descanso-activo');
+  const barra = document.getElementById('descanso-barra');
+  if(!barra) return;
+  barra.hidden = false;
+  barra.querySelector('[data-descanso-toggle]').disabled = false;
+  barra.querySelector('[data-descanso-ok]').hidden = true;
+  document.getElementById('btn-descanso').hidden = true;
   descansoUltimoTic = null;
   if(descansoIntervalo) clearInterval(descansoIntervalo);
   descansoIntervalo = setInterval(descansoTick, 250);
   descansoTick();
 }
 
-function descansoTick(){
+const DESCANSO_KEY_PAUSA = 'uc_descanso_pausa';
+
+function descansoConectar(){
   const barra = document.getElementById('descanso-barra');
-  const fin = Number(descansoLeer(DESCANSO_KEY_FIN));
-  if(!barra || !fin){ descansoDetener(); return; }
-  const total = Number(descansoLeer(DESCANSO_KEY_TOTAL)) || 60;
-  const restante = (fin - Date.now()) / 1000;
-  const avance = barra.querySelector('#descanso-anillo-avance');
-  const largo = 2 * Math.PI * 19;
-  if(restante > 0){
-    barra.querySelector('#descanso-barra-tiempo').textContent = descansoFormato(restante);
-    if(avance){ avance.style.strokeDasharray = largo; avance.style.strokeDashoffset = largo * (1 - Math.min(1, restante / total)); }
-    const seg = Math.ceil(restante);
-    if(seg <= 3 && seg !== descansoUltimoTic && document.visibilityState === 'visible'){
-      descansoUltimoTic = seg;
-      if(window.UCKilo) window.UCKilo.sonido('tic');
+  document.getElementById('btn-descanso').onclick = abrirSelectorDescanso;
+  barra.querySelector('[data-descanso-toggle]').onclick = (event) => {
+    const button = event.currentTarget;
+    const panel = barra.querySelector('[data-descanso-controles]');
+    panel.hidden = !panel.hidden;
+    button.setAttribute('aria-expanded', String(!panel.hidden));
+  };
+  barra.querySelectorAll('[data-descanso-delta]').forEach(button => {
+    button.onclick = () => {
+      const pausa = Number(descansoLeer(DESCANSO_KEY_PAUSA));
+      const fin = Number(descansoLeer(DESCANSO_KEY_FIN));
+      const ahora = Date.now();
+      const restante = pausa || fin - ahora;
+      if(restante <= 0) return;
+      const ajustado = Math.min(600000, Math.max(1000, restante + Number(button.dataset.descansoDelta) * 1000));
+      if(pausa) descansoGuardar(DESCANSO_KEY_PAUSA, ajustado);
+      else descansoGuardar(DESCANSO_KEY_FIN, ahora + ajustado);
+      descansoTick();
+    };
+  });
+  barra.querySelector('[data-descanso-pausa]').onclick = () => {
+    const pausa = Number(descansoLeer(DESCANSO_KEY_PAUSA));
+    if(pausa){
+      descansoGuardar(DESCANSO_KEY_FIN, Date.now() + pausa);
+      descansoGuardar(DESCANSO_KEY_PAUSA, null);
+      descansoPedirPantallaEncendida();
+    }else{
+      const restante = Number(descansoLeer(DESCANSO_KEY_FIN)) - Date.now();
+      if(restante <= 0) return;
+      descansoGuardar(DESCANSO_KEY_PAUSA, restante);
+      descansoGuardar(DESCANSO_KEY_FIN, null);
+      descansoSoltarPantalla();
     }
-    return;
-  }
-  descansoTerminar(-restante);
+    descansoTick();
+  };
+  barra.querySelector('[data-descanso-reinicio]').onclick = () => {
+    descansoIniciar(Number(descansoLeer(DESCANSO_KEY_TOTAL)) || 90);
+  };
+  barra.querySelector('[data-descanso-saltar]').onclick = descansoDetener;
+  barra.querySelector('[data-descanso-ok]').onclick = descansoDetener;
 }
 
-function descansoTerminar(haceSeg){
-  if(descansoIntervalo){ clearInterval(descansoIntervalo); descansoIntervalo = null; }
+function descansoTick(){
+  const barra = document.getElementById('descanso-barra');
+  if(!barra){
+    clearInterval(descansoIntervalo);
+    descansoIntervalo = null;
+    descansoSoltarPantalla();
+    return;
+  }
+  const pausa = Number(descansoLeer(DESCANSO_KEY_PAUSA));
+  const fin = Number(descansoLeer(DESCANSO_KEY_FIN));
+  if(!pausa && !fin) return;
+  const restante = (pausa || fin - Date.now()) / 1000;
+  if(restante <= 0){ descansoTerminar(); return; }
+  barra.querySelector('[data-descanso-tiempo]').textContent = descansoFormato(restante);
+  barra.querySelector('[data-descanso-etiqueta]').textContent = pausa ? 'En pausa' : 'Descanso';
+  barra.querySelector('[data-descanso-pausa]').textContent = pausa ? 'Continuar' : 'Pausar';
+  const seg = Math.ceil(restante);
+  if(!pausa && seg <= 3 && seg !== descansoUltimoTic && document.visibilityState === 'visible'){
+    descansoUltimoTic = seg;
+    window.UCKilo?.sonido('tic');
+  }
+}
+
+function descansoTerminar(){
+  clearInterval(descansoIntervalo);
+  descansoIntervalo = null;
   descansoGuardar(DESCANSO_KEY_FIN, null);
   descansoSoltarPantalla();
   const barra = document.getElementById('descanso-barra');
   if(!barra) return;
-  barra.classList.add('termino');
-  barra.querySelector('#descanso-barra-etiqueta').textContent = haceSeg > 5 ? `Terminó hace ${descansoFormato(haceSeg)}` : 'Descanso terminado';
-  barra.querySelector('#descanso-barra-tiempo').textContent = '¡A la siguiente serie!';
-  const avance = barra.querySelector('#descanso-anillo-avance');
-  if(avance) avance.style.strokeDashoffset = 0;
-  barra.querySelector('#descanso-barra-acciones').innerHTML = `<button type="button" class="descanso-mini descanso-saltar" id="btn-ok-descanso">OK</button>`;
-  barra.querySelector('#btn-ok-descanso').onclick = descansoDetener;
-  if(window.UCKilo){ window.UCKilo.sonido('descanso'); window.UCKilo.vibrar([200, 100, 200, 100, 300]); }
-  if(descansoAvisoTimer) clearTimeout(descansoAvisoTimer);
+  barra.querySelector('[data-descanso-etiqueta]').textContent = 'Descanso terminado';
+  barra.querySelector('[data-descanso-tiempo]').textContent = '0:00';
+  barra.querySelector('[data-descanso-controles]').hidden = true;
+  barra.querySelector('[data-descanso-toggle]').disabled = true;
+  barra.querySelector('[data-descanso-toggle]').setAttribute('aria-expanded', 'false');
+  barra.querySelector('[data-descanso-ok]').hidden = false;
+  window.UCKilo?.sonido('descanso');
+  window.UCKilo?.vibrar([200, 100, 200, 100, 300]);
+  clearTimeout(descansoAvisoTimer);
   descansoAvisoTimer = setTimeout(descansoDetener, 8000);
 }
 
 function descansoDetener(){
-  if(descansoIntervalo){ clearInterval(descansoIntervalo); descansoIntervalo = null; }
-  if(descansoAvisoTimer){ clearTimeout(descansoAvisoTimer); descansoAvisoTimer = null; }
+  clearInterval(descansoIntervalo);
+  clearTimeout(descansoAvisoTimer);
+  descansoIntervalo = null;
+  descansoAvisoTimer = null;
   descansoGuardar(DESCANSO_KEY_FIN, null);
+  descansoGuardar(DESCANSO_KEY_PAUSA, null);
   descansoSoltarPantalla();
-  document.body.classList.remove('descanso-activo');
   const barra = document.getElementById('descanso-barra');
-  if(barra){ barra.classList.add('sale'); setTimeout(() => barra.remove(), 250); }
+  if(barra){
+    barra.hidden = true;
+    barra.querySelector('[data-descanso-controles]').hidden = true;
+    barra.querySelector('[data-descanso-toggle]').setAttribute('aria-expanded', 'false');
+    barra.querySelector('[data-descanso-ok]').hidden = true;
+  }
+  const boton = document.getElementById('btn-descanso');
+  if(boton) boton.hidden = false;
 }
 
 // Pantalla encendida mientras corre el descanso (Android Chrome y iPhone
@@ -3795,9 +3827,24 @@ function renderNuevaSesionForm(){
         <input type="date" id="input-fecha-sesion" value="${activeSesionFecha}" max="${todayStr()}" aria-label="Fecha del entrenamiento">
       </label>
       <div class="reg-top-acciones">
-        <span class="reg-descanso-lugar" id="descanso-lugar" aria-hidden="true"></span>
         ${sonidoBtnHtml()}
         <button class="link-btn" id="btn-cancelar-sesion">Cancelar</button>
+      </div>
+    </div>
+    <div class="reg-descanso-sticky">
+      <button type="button" id="btn-descanso">⏱ Descanso</button>
+      <div id="descanso-barra" hidden>
+        <button type="button" data-descanso-toggle aria-expanded="false" aria-controls="descanso-controles">
+          <span data-descanso-etiqueta>Descanso</span> <strong data-descanso-tiempo role="timer">0:00</strong>
+        </button>
+        <button type="button" data-descanso-ok hidden>Listo</button>
+        <div id="descanso-controles" data-descanso-controles hidden>
+          <button type="button" data-descanso-delta="-15" aria-label="Quitar 15 segundos">−15 s</button>
+          <button type="button" data-descanso-delta="15" aria-label="Sumar 15 segundos">+15 s</button>
+          <button type="button" data-descanso-pausa>Pausar</button>
+          <button type="button" data-descanso-reinicio>Reiniciar</button>
+          <button type="button" data-descanso-saltar>Saltar</button>
+        </div>
       </div>
     </div>
     <h1 class="reg-titulo">${regTituloDiaHtml(activeSesionDia)}</h1>
@@ -3838,9 +3885,8 @@ function renderNuevaSesionForm(){
     </div>
 
     <button type="button" id="btn-superserie-toggle" class="fab-superserie${superserieModo ? ' active' : ''}" title="Unir dos ejercicios en superserie">${ICONS.link}</button>
-    <button type="button" id="btn-descanso" class="fab-descanso fab-movible" title="Descanso · arrástralo para moverlo"><span class="fab-grip" aria-hidden="true">⠿</span><span aria-hidden="true">⏱</span> Descanso</button>
   `;
-  hacerBotonArrastrable(document.getElementById('btn-descanso'), 'uc_descanso_pos', abrirSelectorDescanso, document.getElementById('descanso-lugar'));
+  descansoConectar();
   descansoReanudar();
   document.getElementById('btn-superserie-toggle').onclick = toggleSuperserieModo;
   document.getElementById('btn-cancelar-sesion').onclick = cancelarSesion;
@@ -3861,72 +3907,6 @@ function renderNuevaSesionForm(){
 // Botón flotante que se puede arrastrar con el dedo a cualquier parte de la
 // pantalla. Un toque corto lo usa (onTap); si se mueve más de 8 px, se
 // arrastra. La posición se recuerda en este celular (localStorage).
-function hacerBotonArrastrable(btn, clave, onTap, lugarInicial){
-  if(!btn) return;
-  // Queda FIJO en su lugar de la página (se va con el scroll como el resto),
-  // pero se puede tomar con el dedo y dejar en otro lugar. La posición se
-  // guarda relativa al contenedor de la pantalla, en este celular.
-  btn.style.position = 'absolute';
-  const base = () => {
-    const par = btn.offsetParent || document.body;
-    const r = par.getBoundingClientRect();
-    return { x: r.left + window.scrollX, y: r.top + window.scrollY, w: par.clientWidth || window.innerWidth, h: Math.max(par.scrollHeight, par.clientHeight) };
-  };
-  const aplicar = (pageX, pageY) => {
-    const b = base();
-    const w = btn.offsetWidth || 120, h = btn.offsetHeight || 38;
-    const x = Math.min(Math.max(0, pageX - b.x), Math.max(0, b.w - w));
-    const y = Math.min(Math.max(0, pageY - b.y), Math.max(0, b.h - h));
-    btn.style.left = x + 'px'; btn.style.top = y + 'px'; btn.style.right = 'auto'; btn.style.bottom = 'auto';
-    return { x, y, w: b.w };
-  };
-  let guardada = null;
-  try { guardada = JSON.parse(localStorage.getItem(clave) || 'null'); } catch(e){}
-  if(guardada && typeof guardada.ry !== 'number') guardada = null; // formato antiguo (flotante): se ignora
-  requestAnimationFrame(() => {
-    const b = base();
-    if(guardada) aplicar(b.x + guardada.fx * b.w, b.y + guardada.ry);
-    else if(lugarInicial){ const r = lugarInicial.getBoundingClientRect(); aplicar(r.left + window.scrollX, r.top + window.scrollY); }
-    if(!guardada){
-      btn.classList.add('fab-invita');
-      const aviso = document.createElement('span');
-      aviso.className = 'fab-aviso'; aviso.textContent = '✋ Puedes moverlo';
-      btn.appendChild(aviso);
-      setTimeout(() => { aviso.remove(); btn.classList.remove('fab-invita'); }, 4500);
-    }
-  });
-  let inicio = null, movido = false;
-  btn.addEventListener('pointerdown', e => {
-    const r = btn.getBoundingClientRect();
-    inicio = { px: e.pageX, py: e.pageY, x: r.left + window.scrollX, y: r.top + window.scrollY };
-    movido = false;
-    try { btn.setPointerCapture(e.pointerId); } catch(_){}
-  });
-  btn.addEventListener('pointermove', e => {
-    if(!inicio) return;
-    const dx = e.pageX - inicio.px, dy = e.pageY - inicio.py;
-    if(!movido && Math.hypot(dx, dy) < 8) return;
-    movido = true;
-    btn.classList.add('arrastrando');
-    btn.classList.remove('fab-invita');
-    const av = btn.querySelector('.fab-aviso'); if(av) av.remove();
-    aplicar(inicio.x + dx, inicio.y + dy);
-    e.preventDefault();
-  });
-  const soltar = () => {
-    if(!inicio) return;
-    if(movido){
-      const w = base().w || 1;
-      try { localStorage.setItem(clave, JSON.stringify({ fx: (parseFloat(btn.style.left) || 0) / w, ry: parseFloat(btn.style.top) || 0 })); } catch(_){}
-    }
-    btn.classList.remove('arrastrando');
-    inicio = null;
-  };
-  btn.addEventListener('pointerup', soltar);
-  btn.addEventListener('pointercancel', soltar);
-  btn.addEventListener('click', e => { if(movido){ e.preventDefault(); movido = false; return; } onTap(); });
-}
-
 // ---------- Ayudas visuales del registro de hoy ----------
 function regFechaCorta(fecha){
   const [y, m, d] = String(fecha || todayStr()).split('-').map(Number);
