@@ -5072,6 +5072,8 @@ async function renderCoachHome(){
       Para que un alumno nuevo entre, compártele el link de la app: te va a pedir crear su cuenta con su correo la primera vez.
     </div>
     ${esSuperAdmin ? `
+      <button type="button" class="btn-toggle-rutina" id="btn-stc-checklist" aria-controls="stc-checklist-holder" aria-expanded="false"><span class="toggle-label">${ICONS.clipboard} Checklist de sede</span>${toggleStateHtml()}</button>
+      <div class="hidden" id="stc-checklist-holder"></div>
       <button class="btn-toggle-rutina" id="btn-toggle-profesores">
         <span class="toggle-label">${ICONS.users} Gestión de profesores</span>
         ${toggleStateHtml()}
@@ -5126,6 +5128,11 @@ async function renderCoachHome(){
   rolesMontarHome();
 
   if(esSuperAdmin){
+    wireToggle('btn-stc-checklist', 'stc-checklist-holder', () => {
+      const holder = document.getElementById('stc-checklist-holder');
+      if (window.STCChecklistSede) window.STCChecklistSede.render(holder, profile.id);
+      else holder.textContent = 'Recarga la aplicación para abrir el checklist.';
+    });
     wireToggle('btn-toggle-profesores', 'profesores-holder', () => {
       renderGestionProfesores('profesores-holder', profesores, conUltima, renderCoachHome);
     });
