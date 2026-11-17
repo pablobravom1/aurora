@@ -5715,6 +5715,7 @@ async function renderCoachAlumnoDetail(alumnoId, volver){
   // (por ejemplo si el profe titular faltó), pero no puede crear, editar ni eliminar nada.
   const soloObservador = profile.role === 'profesor' && alumno.profesor_id !== profile.id;
   const esSuperAdmin = esGestor() || profile.role === 'ceo';
+  const puedeEditarNombre = esSuperAdmin || (profile.role === 'profesor' && !soloObservador && alumno.role === 'alumno');
 
   root().innerHTML = `
     <div class="header-actions">
@@ -5722,7 +5723,7 @@ async function renderCoachAlumnoDetail(alumnoId, volver){
         <div id="alumno-nombre-holder">
           <h1 style="font-size:20px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <span id="alumno-nombre-texto">${escapeHtml(alumno.nombre)}</span>
-            ${esSuperAdmin ? `<button class="btn-sm" id="btn-editar-nombre-alumno" style="font-size:11px; padding:3px 8px;">${ICONS.edit} Editar nombre</button>` : ''}
+            ${puedeEditarNombre ? `<button class="btn-sm" id="btn-editar-nombre-alumno" style="font-size:11px; padding:3px 8px;">${ICONS.edit} Editar nombre</button>` : ''}
           </h1>
         </div>
         <div class="sub" style="margin-bottom:0;">Registro de entrenamiento</div>
@@ -5815,13 +5816,13 @@ async function renderCoachAlumnoDetail(alumnoId, volver){
     ` : ''}
   `;
   document.getElementById('btn-volver').onclick = volver || renderCoachHome;
-  if(esSuperAdmin){
+  if(puedeEditarNombre){
     const btnEditarNombre = document.getElementById('btn-editar-nombre-alumno');
     if(btnEditarNombre){
       btnEditarNombre.onclick = () => {
         document.getElementById('alumno-nombre-holder').innerHTML = `
           <div class="row-flex" style="gap:8px; align-items:center; flex-wrap:wrap;">
-            <input type="text" id="input-editar-nombre-alumno" value="${escapeHtml(alumno.nombre)}" style="margin-bottom:0; flex:1; min-width:160px;">
+            <input type="text" id="input-editar-nombre-alumno" aria-label="Nombre completo del alumno" maxlength="140" value="${escapeHtml(alumno.nombre)}" style="margin-bottom:0; flex:1; min-width:160px;">
             <button class="btn-sm" id="btn-guardar-nombre-alumno">Guardar</button>
             <button class="btn-sm" id="btn-cancelar-nombre-alumno">Cancelar</button>
           </div>
@@ -5829,17 +5830,37 @@ async function renderCoachAlumnoDetail(alumnoId, volver){
         const input = document.getElementById('input-editar-nombre-alumno');
         input.focus();
         input.select();
-        document.getElementById('btn-cancelar-nombre-alumno').onclick = () => renderCoachAlumnoDetail(alumnoId);
+        document.getElementById('btn-cancelar-nombre-alumno').onclick = () => renderCoachAlumnoDetail(alumnoId, volver);
         const guardarNombreAlumno = async () => {
-          const nuevoNombre = input.value.trim();
-          if(!nuevoNombre){ showToast('El nombre no puede quedar vacío'); return; }
-          if(nuevoNombre === alumno.nombre){ renderCoachAlumnoDetail(alumnoId); return; }
           const btnGuardar = document.getElementById('btn-guardar-nombre-alumno');
-          btnGuardar.disabled = true; btnGuardar.textContent = 'Guardando...';
-          const { error } = await sb.from('profiles').update({ nombre: nuevoNombre }).eq('id', alumnoId);
-          if(error){ showToast('No se pudo actualizar el nombre: ' + error.message); btnGuardar.disabled = false; btnGuardar.textContent = 'Guardar'; return; }
-          showToast('Nombre actualizado');
-          renderCoachAlumnoDetail(alumnoId);
+          if(!btnGuardar || btnGuardar.disabled) return;
+          const nuevoNombre = input.value.trim().replace(/\s+/g, ' ');
+          if(!nuevoNombre || nuevoNombre.length > 140){
+            showToast('Escribe un nombre de hasta 140 caracteres.');
+            return;
+          }
+          if(nuevoNombre === alumno.nombre){ renderCoachAlumnoDetail(alumnoId, volver); return; }
+          btnGuardar.disabled = true;
+          btnGuardar.textContent = 'Guardando...';
+          try {
+            const resultado = profile.role === 'profesor' && !esSuperAdmin
+              ? await sb.rpc('stc_profesor_editar_nombre_alumno', { p_alumno: alumnoId, p_nombre: nuevoNombre })
+              : await sb.from('profiles').update({ nombre: nuevoNombre }).eq('id', alumnoId).select('id').maybeSingle();
+            if(resultado.error || !resultado.data){
+              const mensaje = resultado.error?.code === '42501' || (!resultado.error && !resultado.data)
+                ? 'Tu perfil no puede editar el nombre de este alumno.'
+                : 'No se pudo guardar el nombre. Intenta de nuevo.';
+              showToast(mensaje);
+              return;
+            }
+            showToast('Nombre actualizado');
+            renderCoachAlumnoDetail(alumnoId, volver);
+          } catch(error) {
+            showToast('No se pudo guardar el nombre. Intenta de nuevo.');
+          } finally {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = 'Guardar';
+          }
         };
         document.getElementById('btn-guardar-nombre-alumno').onclick = guardarNombreAlumno;
         input.onkeydown = (e) => { if(e.key === 'Enter') guardarNombreAlumno(); };
