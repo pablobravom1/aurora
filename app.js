@@ -1415,6 +1415,7 @@ function renderPlantillaEditor(pl){
 }
 
 async function guardarPlantilla(){
+  const borradorGuardado = borradorRutina;
   const nombre = document.getElementById('rutina-nombre').value.trim();
   const objetivo = document.getElementById('rutina-objetivo').value.trim();
   const { filas, faltaTrabajo } = filasDesdeEditorRutina();
@@ -1443,6 +1444,7 @@ async function guardarPlantilla(){
     if(!pl){ btn.disabled = false; btn.textContent = 'Guardar plantilla'; return; }
     showToast('Plantilla creada ✓ · ahora puedes asignarla a tus alumnos');
   }
+  STCBorradores.limpiar(borradorGuardado);
   rutinaEditorModo = null; plantillaEditorId = null; rutinaEditorId = null;
   rutinaEditorReturn = null;
   renderMisPlantillas();
@@ -6003,10 +6005,111 @@ async function guardarNotaAlumno(sesionId){
   showToast('Nota guardada ✓');
 }
 
+const STCBorradores = (() => {
+  const prefijo = 'stc:planificacion:borrador:v1:';
+  let activo;
+
+  function abrir(tipo, alumno, id) {
+    if(!profile?.id || profile.role === 'alumno') return null;
+    const clave = prefijo + JSON.stringify([profile.id, tipo, alumno || null, id || null]);
+    let raw = null;
+    let datos = null;
+    let disponible = true;
+    try {
+      raw = localStorage.getItem(clave);
+      if(raw) datos = JSON.parse(raw);
+    } catch(_) {
+      disponible = raw !== null;
+    }
+    return {clave, cuenta:profile.id, raw, datos, disponible, publicando:false};
+  }
+
+  function guardar(entrada, datos) {
+    if(!entrada || entrada.publicando || !entrada.disponible || profile?.id !== entrada.cuenta) return;
+    const raw = JSON.stringify(datos);
+    if(raw === entrada.raw || (!entrada.raw && raw === entrada.inicial)) return;
+    try {
+      if(localStorage.getItem(entrada.clave) !== entrada.raw){
+        entrada.conflicto = true;
+        return;
+      }
+      localStorage.setItem(entrada.clave, raw);
+      entrada.raw = raw;
+      entrada.datos = datos;
+      entrada.error = false;
+    } catch(_) {
+      entrada.error = true;
+    }
+  }
+
+  function limpiar(entrada) {
+    if(!entrada || profile?.id !== entrada.cuenta) return false;
+    try {
+      if(localStorage.getItem(entrada.clave) !== entrada.raw) return false;
+      localStorage.removeItem(entrada.clave);
+      entrada.raw = null;
+      entrada.datos = null;
+      return true;
+    } catch(_) { return false; }
+  }
+
+  function montar(entrada, estado, leer, descartar) {
+    if(!entrada) return;
+    const mensaje = estado.querySelector('[role=status]');
+    const quitar = estado.querySelector('button');
+    const antes = () => estado.isConnected && profile?.id === entrada.cuenta;
+    const mostrar = () => {
+      const texto = entrada.conflicto ? 'Este borrador cambió en otra pestaña. Reabre la planificación para recuperar la última copia.'
+        : entrada.error || !entrada.disponible ? 'No se pudo guardar el borrador en este navegador.'
+        : entrada.raw ? 'Borrador guardado en este navegador.' : 'Guardado automático de borrador activado.';
+      if(texto !== mensaje.textContent && (mensaje.dataset.recuperado !== '1' || entrada.error || entrada.conflicto)){
+        mensaje.textContent = texto;
+      }
+      quitar.hidden = !entrada.raw || !!entrada.conflicto;
+    };
+    if(entrada.inicial === undefined) entrada.inicial = JSON.stringify(leer());
+    const persistir = () => {
+      if(!antes()) return;
+      const anterior = entrada.raw;
+      guardar(entrada, leer());
+      if(anterior !== entrada.raw) delete mensaje.dataset.recuperado;
+      mostrar();
+    };
+    quitar.onclick = () => {
+      if(entrada.publicando || !confirm('¿Descartar el borrador de esta planificación?')) return;
+      if(limpiar(entrada)) descartar();
+      else { entrada.conflicto = true; mostrar(); }
+    };
+    activo = persistir;
+    mostrar();
+  }
+
+  function alCambiar(event) {
+    const persistir = activo;
+    if(!persistir) return;
+    // Espera a que terminen los controles del editor, incluidos +/- y los modales de series.
+    if(event.eventPhase === Event.CAPTURING_PHASE) setTimeout(persistir, 0);
+    else persistir();
+  }
+  for(const event of ['input', 'change', 'click']) document.addEventListener(event, alCambiar);
+  document.addEventListener('click', alCambiar, true);
+  document.addEventListener('visibilitychange', () => { if(document.hidden) activo?.(); });
+  window.addEventListener('pagehide', () => activo?.());
+  const html = recuperado => `<div class="card stc-borrador" style="padding:10px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+    <small role="status" ${recuperado ? 'data-recuperado="1"' : ''}>${recuperado ? 'Borrador recuperado en este navegador.' : ''}</small>
+    <button type="button" class="btn-sm" hidden>Descartar borrador</button></div>`;
+  return {abrir, montar, guardar, limpiar, html, persistir:() => activo?.()};
+})();
+
+let borradorRutina = null;
 function renderRutinaEditor(alumno, prefill, editingRutinaId, returnFn, plantilla){
   if(!alumno || alumno.id !== PLANTILLA_FALSO_ALUMNO.id) rutinaEditorModo = null;
   const esPlantilla = rutinaEditorModo === 'plantilla';
   rutinaEditorId = editingRutinaId || null;
+  const borrador = STCBorradores.abrir(esPlantilla ? 'plantilla' : 'rutina', esPlantilla ? null : alumno.id, editingRutinaId);
+  borradorRutina = borrador;
+  const recuperado = borrador?.datos;
+  const diasRecuperados = Array.isArray(recuperado?.dias) && recuperado.dias.length ? recuperado.dias : null;
   const esAlumnoEditando = profile.role === 'alumno' && alumno.id === profile.id;
   rutinaEditorReturn = returnFn || (esAlumnoEditando ? renderAlumnoHome : () => renderCoachAlumnoDetail(alumno.id));
   // Rutina nueva desde cero: primero se elige la plantilla (fuerza o funcional)
@@ -6020,8 +6123,11 @@ function renderRutinaEditor(alumno, prefill, editingRutinaId, returnFn, plantill
         </div>
         <button class="switch-user" id="btn-cancelar-rutina">Cancelar</button>
       </div>
+      ${diasRecuperados ? '<button type="button" class="btn" id="stc-seguir-borrador">Continuar borrador de rutina</button>' : ''}
       <div class="fx-plantillas">${fxPlantillaHtml()}</div>`;
     document.getElementById('btn-cancelar-rutina').onclick = volverA;
+    const continuar = document.getElementById('stc-seguir-borrador');
+    if(continuar) continuar.onclick = () => renderRutinaEditor(alumno, null, null, volverA, 'fuerza');
     root().querySelectorAll('[data-plantilla]').forEach(b => b.onclick = () => renderRutinaEditor(alumno, null, null, volverA, b.dataset.plantilla));
     return;
   }
@@ -6029,8 +6135,9 @@ function renderRutinaEditor(alumno, prefill, editingRutinaId, returnFn, plantill
     ? prefill.dias.map(d => ({ nombre: d.nombre, ejercicios: d.ejercicios.map(ex => ({...ex})), circuito: fxDeDia(d) }))
     : [{ nombre: 'Día 1', ejercicios: [], circuito: plantilla && FX_FORMATOS[plantilla] ? fxDefaults(plantilla) : null }];
   rutinaEditorDias.forEach(di => { di.ejercicios = di.ejercicios.filter(r => (r.nombre || '').trim()); });
-  rutinaDiaActivo = 0;
-  rutinaExAbierto = null;
+  if(diasRecuperados) rutinaEditorDias = diasRecuperados;
+  rutinaDiaActivo = diasRecuperados ? Math.max(0, Math.min(rutinaEditorDias.length - 1, Number(recuperado.dia) || 0)) : 0;
+  rutinaExAbierto = diasRecuperados ? (recuperado.ejercicio || null) : null;
 
   const titulo = esPlantilla ? (rutinaEditorId ? 'Editar plantilla' : 'Nueva plantilla') : esAlumnoEditando
     ? (rutinaEditorId ? 'Editar mi rutina' : (prefill ? 'Crear desde una rutina' : 'Crear mi rutina'))
@@ -6056,16 +6163,30 @@ function renderRutinaEditor(alumno, prefill, editingRutinaId, returnFn, plantill
 
     <div class="card">
       <label>Nombre del programa</label>
-      <input type="text" id="rutina-nombre" placeholder="${esPlantilla ? 'Ej: Hipertrofia 4 días' : 'Ej: Hipertrofia — Fase 1'}" value="${escapeHtml(prefill ? prefill.nombre : '')}">
+      <input type="text" id="rutina-nombre" placeholder="${esPlantilla ? 'Ej: Hipertrofia 4 días' : 'Ej: Hipertrofia — Fase 1'}" value="${escapeHtml(diasRecuperados ? recuperado.nombre : (prefill ? prefill.nombre : ''))}">
       <label>Objetivo (opcional)</label>
-      <input type="text" id="rutina-objetivo" placeholder="Ej: Hipertrofia tren superior" value="${escapeHtml(prefill ? prefill.objetivo : '')}">
+      <input type="text" id="rutina-objetivo" placeholder="Ej: Hipertrofia tren superior" value="${escapeHtml(diasRecuperados ? recuperado.objetivo : (prefill ? prefill.objetivo : ''))}">
     </div>
 
+    ${borrador ? STCBorradores.html(diasRecuperados) : ''}
     <div id="rutina-dias-holder"></div>
     <button class="btn" id="btn-guardar-rutina" style="margin-top:16px;">${rutinaEditorId ? 'Guardar cambios' : (esPlantilla ? 'Guardar plantilla' : 'Guardar rutina')}</button>
   `;
-  document.getElementById('btn-cancelar-rutina').onclick = rutinaEditorReturn;
-  document.getElementById('btn-guardar-rutina').onclick = () => esPlantilla ? guardarPlantilla() : guardarRutina(alumno);
+  const salir = document.getElementById('btn-cancelar-rutina');
+  if(borrador) salir.textContent = 'Volver';
+  salir.onclick = () => { if(!borrador?.publicando) { STCBorradores.persistir(); rutinaEditorReturn(); } };
+  document.getElementById('btn-guardar-rutina').onclick = async () => {
+    if(borrador?.publicando) return;
+    STCBorradores.persistir();
+    if(borrador) borrador.publicando = true;
+    try { return await (esPlantilla ? guardarPlantilla() : guardarRutina(alumno)); }
+    finally { if(borrador) borrador.publicando = false; }
+  };
+  if(borrador) STCBorradores.montar(borrador, root().querySelector('.stc-borrador'), () => ({
+    nombre:document.getElementById('rutina-nombre').value,
+    objetivo:document.getElementById('rutina-objetivo').value,
+    dias:rutinaEditorDias, dia:rutinaDiaActivo, ejercicio:rutinaExAbierto
+  }), () => renderRutinaEditor(alumno, prefill, editingRutinaId, returnFn, plantilla));
   renderRutinaDiasEditor();
 }
 
@@ -6073,6 +6194,7 @@ const RUTINA_MAX_DIAS = 7;
 let rutinaDiaActivo = 0;
 let rutinaExAbierto = null;
 function renderRutinaDiasEditor(){
+  STCBorradores.persistir();
   const holder = document.getElementById('rutina-dias-holder');
   if(!holder) return;
   if(rutinaDiaActivo >= rutinaEditorDias.length) rutinaDiaActivo = Math.max(0, rutinaEditorDias.length - 1);
@@ -6388,6 +6510,7 @@ function filasDesdeEditorRutina(){
 
 async function guardarRutina(alumno){
   if(rutinaEditorModo === 'plantilla') return guardarPlantilla();
+  const borradorGuardado = borradorRutina;
   const nombre = document.getElementById('rutina-nombre').value.trim();
   const objetivo = document.getElementById('rutina-objetivo').value.trim();
   const { filas, faltaTrabajo } = filasDesdeEditorRutina();
@@ -6438,6 +6561,7 @@ async function guardarRutina(alumno){
       avisarPush({ tipo:'rutina', rutina_id: rutinaEditorId, actualizada: true });
     }
     else showToast('¡Rutina actualizada!');
+    STCBorradores.limpiar(borradorGuardado);
     rutinaEditorId = null;
     const volver = rutinaEditorReturn;
     rutinaEditorReturn = null;
@@ -6493,6 +6617,7 @@ async function guardarRutina(alumno){
     avisarPush({ tipo:'rutina', rutina_id: rutina.id, actualizada: false });
   }
   else showToast('¡Rutina guardada!');
+  STCBorradores.limpiar(borradorGuardado);
   const volver = rutinaEditorReturn;
   rutinaEditorReturn = null;
   volver();

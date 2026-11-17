@@ -346,7 +346,10 @@
   const exTotal = (m) => (m.plan.dias || []).reduce((a, d) => a + d.ejercicios.length, 0);
 
   function pedirDatosIniciales(volver, alumnoPre){
-    let sem = 4, dias = 4, des = 'ultima', modo = 'kg', paso = 2.5;
+    const borrador = STCBorradores.abrir('mesociclo', alumnoPre?.id, null);
+    if(borrador?.datos?.plan) return abrirEditor(borrador.datos.plan, volver, true, alumnoPre, borrador);
+    const previo = borrador?.datos?.inicio;
+    let {sem = 4, dias = 4, des = 'ultima', modo = 'kg', paso = 2.5} = previo || {};
     const chips = (id, arr) => `<div class="ms-chips" id="${id}">${arr.map(([v, t, on]) => `<button type="button" data-v="${v}" class="${on ? 'on' : ''}">${t}</button>`).join('')}</div>`;
     const pasoChips = () => chips('msn-paso', [['2.5', modo === 'pct' ? '+2,5 %' : '+2,5 kg', paso === 2.5], ['5', modo === 'pct' ? '+5 %' : '+5 kg', paso === 5], ['otro', 'Otro', paso !== 2.5 && paso !== 5]]);
     root().innerHTML = `<div class="ms ms-form" style="padding-bottom:30px">
@@ -366,6 +369,7 @@
         <div id="msn-pasos"><label class="ms-l">Aumento semanal</label><div id="msn-paso-w">${pasoChips()}</div></div>
         <p class="ms-note">Escribes el peso de la semana 1 y la app completa las demás. Después puedes ajustar cualquier semana a mano.</p>
       </div>
+      ${borrador ? STCBorradores.html(previo) : ''}
       <button type="button" class="ms-cta" id="msn-continuar" data-si>Continuar: elegir ejercicios</button>
     </div>`;
     const sel = (cont, cb) => cont.querySelectorAll('button').forEach(b => b.onclick = () => {
@@ -401,25 +405,55 @@
       $id('msn-paso-w').innerHTML = pasoChips(); cablearPaso();
     });
     cablearPaso();
-    $id('msn-volver').onclick = volver;
+    if(previo){
+      $id('msn-nombre').value = previo.nombre || '';
+      $id('msn-obj').value = previo.objetivo || '';
+      const marcar = (id, valor) => {
+        const grupo = $id(id);
+        const exacto = grupo.querySelector(`[data-v="${valor}"]`);
+        (exacto || grupo.querySelector('[data-v="otro"]'))?.click();
+      };
+      marcar('msn-sem', previo.sem);
+      const semOtro = $id('msn-sem-otro');
+      if(semOtro){ sem = previo.sem; semOtro.value = sem; }
+      marcar('msn-dias', previo.dias);
+      marcar('msn-des', previo.des);
+      marcar('msn-modo', previo.modo);
+      if(modo !== 'manual'){
+        marcar('msn-paso', previo.paso);
+        const pasoOtro = $id('msn-paso-otro');
+        if(pasoOtro){ paso = previo.paso; pasoOtro.value = paso; }
+      }
+    }
+    if(borrador) STCBorradores.montar(borrador, root().querySelector('.stc-borrador'), () => ({
+      inicio:{sem, dias, des, modo, paso, nombre:$id('msn-nombre').value, objetivo:$id('msn-obj').value}
+    }), () => pedirDatosIniciales(volver, alumnoPre));
+    $id('msn-volver').onclick = () => { STCBorradores.persistir(); volver(); };
     $id('msn-continuar').onclick = () => {
       const nombre = $id('msn-nombre').value.trim();
       if(!nombre){ toast('Ponle un nombre al mesociclo'); $id('msn-nombre').focus(); return; }
       const plan = planNuevo(sem, dias);
       plan.prog.modo = modo; plan.prog.paso = modo === 'manual' ? 2.5 : paso;
       plan.prog.descarga = (des === 'ultima' && sem >= 2) ? [sem] : [];
-      abrirEditor({ id:null, nombre, objetivo: $id('msn-obj').value.trim() || null, semanas: sem, alumno_id: alumnoPre ? alumnoPre.id : null, estado: alumnoPre ? 'activo' : 'plantilla', inicio: alumnoPre ? hoyStr() : null, plan }, volver, true, alumnoPre);
+      abrirEditor({ id:null, nombre, objetivo: $id('msn-obj').value.trim() || null, semanas: sem, alumno_id: alumnoPre ? alumnoPre.id : null, estado: alumnoPre ? 'activo' : 'plantilla', inicio: alumnoPre ? hoyStr() : null, plan }, volver, true, alumnoPre, borrador);
     };
   }
 
-  function abrirEditor(m, volver, nuevo, alumno){
+  function abrirEditor(m, volver, nuevo, alumno, entrada){
     normalizarPlan(m);
-    E = { m, semana: 1, dia: 0, sucio: !!nuevo, volver, firmaInicial: m.id ? firmaSemana(m.plan, m.semana_aplicada || 1) : null, nuevo: !!nuevo, alumno: alumno || null };
-    if(m.alumno_id && m.estado === 'activo') E.semana = m.semana_aplicada || semanaActual(m);
+    const original = clon(m);
+    const borrador = entrada || STCBorradores.abrir('mesociclo', m.alumno_id, m.id);
+    const datos = borrador?.datos;
+    if(datos?.plan) m = { ...m, ...datos.plan };
+    E = { m, semana: 1, dia: 0, sucio: !!nuevo || !!datos?.plan, volver, firmaInicial: original.id ? firmaSemana(original.plan, original.semana_aplicada || 1) : null, nuevo: !!nuevo, alumno: alumno || null, borrador, original, recuperado:!!datos?.plan };
+    if(datos?.plan){
+      E.semana = Math.max(1, Math.min(m.semanas, Number(datos.semana) || 1));
+      E.dia = Math.max(0, Math.min(m.plan.dias.length - 1, Number(datos.dia) || 0));
+    } else if(m.alumno_id && m.estado === 'activo') E.semana = m.semana_aplicada || semanaActual(m);
     pintarEditor();
   }
 
-  const sucio = () => { if(E && !E.sucio){ E.sucio = true; const p = $id('ms-sucio'); if(p) p.hidden = false; } };
+  const sucio = () => { if(E && !E.sucio){ E.sucio = true; const p = $id('ms-sucio'); if(p) p.hidden = false; } STCBorradores.persistir(); };
 
   function deltaHtml(e, w, campo){
     if(w <= 1) return '';
@@ -477,15 +511,29 @@
       <div class="ms-exs" id="ms-exs">${dia.ejercicios.length ? dia.ejercicios.map((e, i) => cardEjercicio(e, i, w, dia)).join('') : '<div class="ms-vacio" style="border:0;margin:0">Este día aún no tiene ejercicios.</div>'}</div>
       <div class="ms-row2"><button type="button" class="ms-chipb" id="ms-copiar">⧉ Copiar semana</button><button type="button" class="ms-chipb" id="ms-addex">＋ Agregar ejercicio</button></div>
       <p class="ms-note">Cada ejercicio muestra su foto y un botón para ver el video de la técnica. Lo que cambia respecto a la semana anterior se marca en amarillo.</p>
+      ${E.borrador ? `<div id="ms-borrador">${STCBorradores.html(E.recuperado)}</div>` : ''}
       <div class="ms-bar"><button type="button" class="btn" id="ms-guardar"><span class="ms-sucio" id="ms-sucio" ${E.sucio ? '' : 'hidden'}></span>${m.id ? 'Guardar cambios' : 'Guardar mesociclo'}</button></div>
     </div>`;
     cablearEditor();
+    const editor = E;
+    if(editor.borrador){
+      STCBorradores.montar(editor.borrador, $id('ms-borrador'), () => {
+        const {nombre, objetivo, semanas, inicio, plan} = editor.m;
+        return {plan:{...(!editor.m.id ? {alumno_id:editor.m.alumno_id, estado:editor.m.estado} : {}), nombre, objetivo, semanas, inicio, plan}, semana:editor.semana, dia:editor.dia};
+      }, () => editor.nuevo ? pedirDatosIniciales(editor.volver, editor.alumno) : abrirEditor(editor.original, editor.volver, false, editor.alumno));
+      if(editor.sucio && !editor.recuperado && editor.nuevo && !editor.borrador.datos?.plan){
+        editor.borrador.inicial = null;
+      }
+      STCBorradores.persistir();
+    }
   }
 
   function cablearEditor(){
     const m = E.m, p = m.plan, w = E.semana;
     $id('ms-volver').onclick = async () => {
-      if(E.sucio && !(await confirmar('¿Salir sin guardar?', 'Tienes cambios sin guardar en este mesociclo. Si sales ahora se pierden.', 'Salir sin guardar', true))) return;
+      if(E.borrador?.publicando) return;
+      STCBorradores.persistir();
+      if(E.sucio && !E.borrador?.raw && !(await confirmar('¿Salir sin guardar?', 'El borrador no se pudo guardar aquí. Si sales ahora puedes perder los cambios.', 'Salir sin guardar', true))) return;
       const v = E.volver; E = null; v();
     };
     $id('ms-nombre').oninput = (ev) => { m.nombre = ev.target.value; sucio(); };
@@ -722,7 +770,10 @@
   }
 
   async function guardar(silencioso){
-    const m = E.m;
+    const editor = E;
+    if(editor.borrador?.publicando) return false;
+    STCBorradores.persistir();
+    const m = editor.m;
     m.nombre = (m.nombre || '').trim();
     if(!m.nombre){ toast('Ponle un nombre al mesociclo'); return false; }
     if(!exTotal(m)){ toast('Agrega al menos un ejercicio'); return false; }
@@ -731,6 +782,7 @@
       if(sinEj){ toast(`«${sinEj.nombre}» no tiene ejercicios: agrégale uno o elimina el día`); return false; }
     }
     const btn = $id('ms-guardar'); if(btn){ btn.disabled = true; }
+    if(editor.borrador) editor.borrador.publicando = true;
     const ahora = new Date().toISOString();
     let creadoAhora = false;
     try{
@@ -746,6 +798,7 @@
         const viejos = (previos || []).map(x => x.id).filter(id => id !== m.id);
         if(viejos.length) await sb.from('mesociclos').update({ estado:'completado', updated_at: ahora }).in('id', viejos);
         E.firmaInicial = firmaSemana(m.plan, w); E.sucio = false; E.nuevo = false;
+        STCBorradores.limpiar(editor.borrador);
         const v = E.volver, nom = E.alumno ? E.alumno.nombre : null; E = null;
         try{ mostrarRutinaEnviada(nom, false); }catch(_e){ toast('Mesociclo asignado ✓'); }
         v();
@@ -769,14 +822,21 @@
       } else if(!silencioso) toast('Mesociclo guardado ✓');
       E.firmaInicial = m.alumno_id && m.semana_aplicada ? firmaSemana(m.plan, m.semana_aplicada) : null;
       E.sucio = false; E.nuevo = false;
-      if(!silencioso){ const v = E.volver; E = null; v(); } else if($id('ms-sucio')) $id('ms-sucio').hidden = true;
+      STCBorradores.limpiar(editor.borrador);
+      if(!silencioso){ const v = E.volver; E = null; v(); }
+      else {
+        E.borrador = STCBorradores.abrir('mesociclo', m.alumno_id, m.id);
+        E.original = clon(m);
+        E.recuperado = false;
+        pintarEditor();
+      }
       return true;
     }catch(err){
       if(creadoAhora && m.id){ try{ await sb.from('mesociclos').delete().eq('id', m.id); }catch(_e){} m.id = null; m.estado = 'activo'; m.semana_aplicada = null; }
       toast('No se pudo guardar: ' + (err && err.message ? err.message : 'error'));
       if(btn) btn.disabled = false;
       return false;
-    }
+    } finally { if(editor.borrador) editor.borrador.publicando = false; }
   }
 
   async function duplicarPlantilla(m){
