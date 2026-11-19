@@ -24,6 +24,7 @@
   .eq-btns button{flex:1;justify-content:center}
   .eq-peligro{background:#C0392B !important;border-color:#C0392B !important;color:#fff !important;font-weight:700}
   .ap-btn{display:inline-flex;align-items:center;gap:8px;flex:1 1 140px;min-width:0;max-width:100%;box-sizing:border-box;padding:5px 10px 5px 6px;border:1px solid var(--line,#333);border-radius:10px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}
+  .ap-btn:disabled{opacity:.62;cursor:progress}
   .ap-btn .profile-avatar{width:30px;height:30px;flex:none}
   .ap-btn .eq-vacio{width:30px;height:30px;font-size:13px}
   .ap-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;font-size:13px}
@@ -186,6 +187,8 @@
       sel.style.display = 'none';
       sel.insertAdjacentElement('afterend', btn);
       pintar();
+      // Si el guardado falla, la lista devuelve el select al profesor anterior y avisa con este evento.
+      sel.addEventListener('stc-asignar-sync', pintar);
       btn.onclick = (e) => {
         e.stopPropagation();
         const fila = sel.closest('.coach-list-item');

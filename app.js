@@ -5224,13 +5224,59 @@ function renderListaAlumnos(lista, esSuperAdmin, profesores, nombreProfesor, tot
   if(esSuperAdmin){
     listEl.querySelectorAll('.select-asignar-profesor').forEach(sel => {
       sel.onclick = (e) => e.stopPropagation();
+      // No recargar el panel: renderCoachHome() cerraba Alumnos, borraba la búsqueda y subía el scroll.
+      // El cambio queda en el alumno que ya está en memoria y solo se actualiza su fila.
       sel.onchange = async () => {
-        const alumnoId = sel.dataset.alumno;
+        const alumno = lista.find(a => a.id === sel.dataset.alumno);
+        if(!alumno) return;
         const nuevoProfesorId = sel.value || null;
-        const { error } = await sb.from('profiles').update({ profesor_id: nuevoProfesorId }).eq('id', alumnoId);
-        if(error){ showToast('No se pudo asignar: ' + error.message); return; }
+        const anterior = alumno.profesor_id || '';
+        if((alumno.profesor_id || null) === nuevoProfesorId) return;
+        const botonDe = (el) => (el && el.nextElementSibling && el.nextElementSibling.classList.contains('ap-btn')) ? el.nextElementSibling : null;
+        const marcar = (el, ocupado) => {
+          if(!el || !el.isConnected) return;
+          el.disabled = ocupado;
+          const boton = botonDe(el);
+          if(!boton) return;
+          boton.disabled = ocupado;
+          if(ocupado){
+            boton.setAttribute('aria-busy', 'true');
+            const nombre = boton.querySelector('.ap-n');
+            if(nombre) nombre.textContent = 'Guardando…';
+          } else {
+            boton.removeAttribute('aria-busy');
+          }
+        };
+        marcar(sel, true);
+        let error;
+        try {
+          ({ error } = await sb.from('profiles').update({ profesor_id: nuevoProfesorId }).eq('id', alumno.id));
+        } catch(e){
+          error = e;
+        }
+        if(error){
+          showToast('No se pudo asignar: ' + (error.message || 'error de conexión'));
+          if(sel.isConnected){
+            sel.value = anterior;
+            marcar(sel, false);
+            sel.dispatchEvent(new CustomEvent('stc-asignar-sync'));
+          }
+          return;
+        }
+        alumno.profesor_id = nuevoProfesorId;
+        const escId = (window.CSS && CSS.escape) ? CSS.escape(alumno.id) : alumno.id;
+        const vivo = sel.isConnected ? sel : document.querySelector('#coach-alumnos-list .select-asignar-profesor[data-alumno="' + escId + '"]');
+        if(vivo){
+          vivo.value = nuevoProfesorId || '';
+          marcar(vivo, false);
+          const meta = vivo.closest('.coach-list-item') && vivo.closest('.coach-list-item').querySelector('.coach-meta');
+          if(meta){
+            const sesion = alumno.ultima ? 'Última sesión: ' + formatDateShort(alumno.ultima) : 'Sin sesiones todavía';
+            meta.textContent = sesion + ' · ' + (nombreProfesor(alumno.profesor_id) || 'Sin profesor asignado');
+          }
+          vivo.dispatchEvent(new CustomEvent('stc-asignar-sync'));
+        }
         showToast('Profesor asignado');
-        renderCoachHome();
       };
     });
   }

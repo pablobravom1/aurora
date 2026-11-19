@@ -38,6 +38,7 @@
   .al-pt{display:inline-block;padding:3px 10px;border-radius:99px;font:700 11.5px Inter,sans-serif;white-space:nowrap}
   .al-pt.v{color:#0d3326;background:#5EE3B6}.al-pt.r{color:#fff;background:#C8414A}.al-pt.n{color:#DDD;background:#2b2b2b}
   .al-tb select{margin:0;width:100%;max-width:100%;padding:6px 8px;font-size:12.5px;border-radius:10px}
+  .al-tb select:disabled{opacity:.62;cursor:progress}
   .al-acc{display:flex;gap:6px;justify-content:flex-end;align-items:center}
   .al-ver{color:#FFFF66;font-weight:600;white-space:nowrap}
   .al-acc .icon-action{position:relative}
@@ -136,10 +137,39 @@
     listEl.querySelectorAll('tbody tr[data-id]').forEach(tr => tr.onclick = (e) => { if(e.target.closest('select, button')) return; renderCoachAlumnoDetail(tr.dataset.id); });
     listEl.querySelectorAll('[data-chat]').forEach(b => b.onclick = (e) => { e.stopPropagation(); renderChat(b.dataset.chat, renderCoachHome); });
     listEl.querySelectorAll('.al-coach').forEach(sel => sel.onchange = async () => {
-      const { error } = await sb.from('profiles').update({ profesor_id: sel.value || null }).eq('id', sel.dataset.alumno);
-      if(error){ showToast('No se pudo asignar: ' + error.message); return; }
+      const alumno = lista.find(a => a.id === sel.dataset.alumno);
+      if(!alumno) return;
+      const nuevo = sel.value || null;
+      const anterior = alumno.profesor_id || '';
+      if((alumno.profesor_id || null) === nuevo) return;
+      // Misma idea que en el celular: guardar y dejar la tabla quieta.
+      // renderCoachHome() rehacía toda la pantalla y cerraba la sección Alumnos.
+      sel.disabled = true;
+      sel.setAttribute('aria-busy', 'true');
+      let error;
+      try {
+        ({ error } = await sb.from('profiles').update({ profesor_id: nuevo }).eq('id', alumno.id));
+      } catch(e){
+        error = e;
+      }
+      if(error){
+        showToast('No se pudo asignar: ' + (error.message || 'error de conexión'));
+        if(sel.isConnected){
+          sel.value = anterior;
+          sel.disabled = false;
+          sel.removeAttribute('aria-busy');
+        }
+        return;
+      }
+      alumno.profesor_id = nuevo;
+      const escId = (window.CSS && CSS.escape) ? CSS.escape(alumno.id) : alumno.id;
+      const actual = sel.isConnected ? sel : document.querySelector('#coach-alumnos-list .al-coach[data-alumno="' + escId + '"]');
+      if(actual){
+        actual.value = nuevo || '';
+        actual.disabled = false;
+        actual.removeAttribute('aria-busy');
+      }
       showToast('Coach asignado');
-      renderCoachHome();
     });
   }
 
