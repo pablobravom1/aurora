@@ -40,23 +40,11 @@ const EXERCISE_BANK = window.STCAkadiaBanco.concat([
 ]);
 const STC_LEGACY_EXERCISES = [{"name":"Rotación de tronco en polea","aliases":["rotacion para oblicuos en polea","rotacion de oblicuos en polea","rotacion en polea de pie","cable torso rotation"],"group":"Core","image":"rotacion-tronco-polea.webp","youtubeUrl":""},{"name":"Elevación de cadera en el suelo","aliases":["elevacion de cadera","puente de gluteos en el suelo","puente de gluteo en suelo","puente de gluteos","glute bridge"],"group":"Glúteos","image":"elevacion-cadera-suelo.webp","youtubeUrl":""}];
 
-function normalizeExerciseName(value){
-  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
-}
-const exerciseBankByName = new Map();
-const exerciseBankByAlias = new Map();
-for (const item of [...EXERCISE_BANK, ...STC_LEGACY_EXERCISES]) {
-  exerciseBankByName.set(normalizeExerciseName(item.name), item);
-  for (const alias of item.aliases || []) {
-    const key = normalizeExerciseName(alias);
-    if (!exerciseBankByAlias.has(key)) exerciseBankByAlias.set(key, item);
-  }
-}
-function exerciseBankJsArg(value){ return escapeHtml(JSON.stringify(String(value))); }
+// El índice vive en ejercicio-extra.js: coincidencia exacta del nombre o del
+// alias ya normalizado. No usa la primera palabra, ni un prefijo, ni includes.
+const exerciseBankIndex = crearIndiceEjercicios([...EXERCISE_BANK, ...STC_LEGACY_EXERCISES]);
 function findExerciseBankEntry(name){
-  const target = normalizeExerciseName(name);
-  if(!target) return null;
-  return exerciseBankByName.get(target) || exerciseBankByAlias.get(target) || null;
+  return buscarEjercicioExacto(exerciseBankIndex, name);
 }
 function exerciseBankSelectOptionsHtml(){
   return [...new Set(EXERCISE_BANK.map(item => item.group))].map(group => `<optgroup label="${escapeHtml(group)}">${EXERCISE_BANK.filter(item => item.group === group).map(item => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`).join('')}</optgroup>`).join('');
@@ -136,9 +124,8 @@ function simpleExerciseBankHtml(prefix, selected){
     <div class="simple-bank-panel hidden" id="${prefix}-panel">
       <div class="simple-bank-title">${ICONS.search}<span><b>Banco de ejercicios</b><small id="${prefix}-bank-help">Toca un ejercicio para elegirlo</small></span></div>
       ${groups.map(group => `<section class="exercise-bank-group"><div class="exercise-bank-group-title">${escapeHtml(group)}</div>${EXERCISE_BANK.filter(item => item.group === group).map(item => {
-        const jsName = exerciseBankJsArg(item.name);
         const search = [item.name, ...(item.aliases || []), item.group].join(' ');
-        return `<div class="exercise-bank-option-row" data-simple-search="${escapeHtml(search)}"><button type="button" class="exercise-bank-option" onclick="selectSimpleExercise('${prefix}',${jsName},event)">${item.image ? `<img src="${escapeHtml(item.image)}" alt="" loading="lazy" decoding="async">` : `<span class="red-img-vacia" aria-hidden="true">${ICONS.clipboard}</span>`}<span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.group)}</small></span>${ICONS.chevronRight}</button>${renderWorkoutVideoIcon(item)}</div>`;
+        return `<div class="exercise-bank-option-row" data-simple-search="${escapeAttr(search)}"><button type="button" class="exercise-bank-option" data-elegir-ejercicio="${escapeAttr(prefix)}" data-ejercicio-nombre="${escapeAttr(item.name)}">${item.image ? `<img src="${escapeHtml(item.image)}" alt="" loading="lazy" decoding="async">` : `<span class="red-img-vacia" aria-hidden="true">${ICONS.clipboard}</span>`}<span><b>${escapeHtml(item.name)}</b><small>${escapeHtml(item.group)}</small></span>${ICONS.chevronRight}</button>${renderWorkoutVideoIcon(item)}</div>`;
       }).join('')}</section>`).join('')}
       <div class="simple-bank-empty hidden" id="${prefix}-empty"><b>No está en el banco todavía</b><span>Puedes agregarlo igualmente escribiendo el nombre y usando el botón de abajo.</span></div>
     </div>
@@ -214,6 +201,13 @@ document.addEventListener('click', () => {
   document.querySelectorAll('.simple-bank-panel').forEach(panel => panel.classList.add('hidden'));
   document.querySelectorAll('.simple-bank-picker .exercise-bank-select').forEach(button => button.setAttribute('aria-expanded','false'));
 });
+// Captura: el contenedor del banco frena el burbujeo, así que el clic hay que
+// leerlo antes. El nombre sale del atributo completo, no de un onclick partido.
+document.addEventListener('click', (event) => {
+  const btn = event.target && event.target.closest && event.target.closest('[data-ejercicio-nombre][data-elegir-ejercicio]');
+  if(!btn) return;
+  selectSimpleExercise(btn.getAttribute('data-elegir-ejercicio'), btn.getAttribute('data-ejercicio-nombre'), event);
+}, true);
 function openExerciseImage(src, name){
   const existing = document.getElementById('exercise-image-viewer');
   if(existing) existing.remove();
@@ -2947,6 +2941,8 @@ async function guardarEjercicioHistorial(sesionId){
   const lado = ladoEl ? ladoEl.value : '';
   if(!nombre){ showToast('Escribe un ejercicio o elígelo del banco'); return; }
   if(!reps){ showToast('Completa las repeticiones'); return; }
+  const identidadHist = identidadEjercicioAgregado(nombre, exerciseBankIndex);
+  const nombreGuardar = identidadHist ? identidadHist.nombre : nombre;
 
   // El "orden" sigue después de las series que ya existen en esa sesión pasada.
   const { count } = await sb.from('sesion_series').select('id', { count: 'exact', head: true }).eq('sesion_id', sesionId);
@@ -2954,7 +2950,7 @@ async function guardarEjercicioHistorial(sesionId){
 
   const { error } = await sb.from('sesion_series').insert({
     sesion_id: sesionId,
-    ejercicio_nombre: nombre,
+    ejercicio_nombre: nombreGuardar,
     peso: peso || 0,
     reps: reps,
     nota: nota || null,
@@ -4127,15 +4123,16 @@ function actualizarSugeridosHolder(){
 // nombreForzado se usa cuando viene de un botón de sugerencia; si no, toma el input de texto.
 function agregarBloqueEjercicio(nombreForzado){
   const input = document.getElementById('session-exercise-value');
-  const nombre = (nombreForzado || sessionExerciseSelection || (input ? input.value : '')).trim();
-  if(!nombre){ showToast('Escribe un ejercicio o elígelo del banco'); return; }
+  const escrito = (typeof nombreForzado === 'string' ? nombreForzado : (sessionExerciseSelection || (input ? input.value : ''))).trim();
+  const decision = ejercicioExtraDuplicado((activeSesionExs || []).map(g => g.nombre), escrito, exerciseBankIndex);
+  if(decision.vacio){ showToast('Escribe un ejercicio o elígelo del banco'); return; }
+  const nombre = decision.identidad.nombre;
 
-  const existente = activeSesionExs.find(g => g.nombre.toLowerCase() === nombre.toLowerCase());
   if(input) input.value = '';
   const textInput = document.getElementById('session-exercise-text');
   if(textInput) textInput.value = '';
   sessionExerciseSelection = '';
-  if(existente){
+  if(decision.duplicado){
     showToast('Ese ejercicio ya está en tu entrenamiento de hoy — sumale series ahí abajo');
     return;
   }
