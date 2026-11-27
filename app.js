@@ -1868,7 +1868,7 @@ function renderRoutineDays(dias){
 
 // ---------- ARRANQUE ----------
 function esVistaCoach(role){
-  return role === 'coach' || role === 'profesor' || role === 'super_admin' || role === 'responsable_sede' || role === 'loc';
+  return role === 'coach' || role === 'profesor' || role === 'super_admin' || role === 'responsable_sede' || role === 'loc' || role === 'asistente_online';
 }
 
 async function boot(){
@@ -1886,6 +1886,7 @@ async function boot(){
 // Pantalla inicial después de entrar. Si la app se abrió tocando una
 // notificación (?abrir=chat|rutina), va directo a ese chat o a la rutina.
 async function renderInicio(){
+  if(profile.role === 'asistente_online') return renderCoachHome();
   const destino = tomarDestinoNotificacionDeUrl();
   if(destino && await abrirDestinoNotificacion(destino)) return;
   if(esVistaCoach(profile.role)) await renderCoachHome();
@@ -1960,10 +1961,13 @@ async function handleLogin(){
   if(!email || !pass){ showToast('Completa correo y contraseña'); return; }
   const btn = document.getElementById('auth-submit');
   btn.disabled = true; btn.textContent = 'Entrando...';
+  if(await window.STCAsistenteOnline?.iniciarClaveTemporal(email, pass)) return;
   const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   btn.disabled = false; btn.textContent = 'Entrar';
   if(error){
-    errBox.textContent = 'No se pudo entrar: correo o contraseña incorrectos.';
+    errBox.textContent = window.STCAsistenteOnline?.tieneFormatoTemporal(pass)
+      ? 'No se pudo entrar. Revisa el correo y la clave. Si tu clave temporal venció, pide otra al equipo de STC.'
+      : 'No se pudo entrar: correo o contraseña incorrectos.';
     errBox.classList.remove('hidden');
     return;
   }
@@ -5004,6 +5008,7 @@ function normalizarTexto(txt){
 }
 
 async function renderCoachHome(){
+  if(profile?.role === 'asistente_online') return window.STCAsistenteOnline?.home();
   cleanupSocialRealtime();
   if(esLoc()) return renderLocHome();
   root().innerHTML = `<div class="loading">Cargando alumnos...</div>`;

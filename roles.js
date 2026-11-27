@@ -14,6 +14,7 @@ window.rolEtiqueta = (p) => {
   if(!p) return '';
   if(p.role === 'super_admin') return p.es_super ? 'Super administrador' : 'Administrador';
   if(p.role === 'responsable_sede') return 'Responsable de Sede';
+  if(p.role === 'asistente_online') return 'Asistente online';
   if(p.role === 'loc') return 'Líder de Operación Comercial';
   if(p.role === 'profesor' && p.es_supervisor) return 'Profesor supervisor';
   if(p.role === 'profesor' || p.role === 'coach') return 'Profesor';
@@ -489,7 +490,7 @@ window.montarGestionPerfiles = async function(holderId){
     const alumnos = vis.filter(p => p.role === 'alumno');
     const mostrarAlumnos = q ? alumnos.slice(0, 30) : [];
     const fila = (p) => `<div class="rl-perfil" data-id="${p.id}">${typeof renderProfileAvatar === 'function' ? renderProfileAvatar(p, 'avatar-chat') : ''}<div class="n">${esc(p.nombre || '(sin nombre)')}<small>${esc(rolEtiqueta(p))}</small></div>
-      <select data-rol><option value="alumno"${p.role === 'alumno' ? ' selected' : ''}>Alumno</option><option value="profesor"${p.role === 'profesor' ? ' selected' : ''}>Profesor</option><option value="responsable_sede"${p.role === 'responsable_sede' ? ' selected' : ''}>Responsable de Sede</option><option value="loc"${p.role === 'loc' ? ' selected' : ''}>LOC</option>${profile.es_super ? `<option value="super_admin"${p.role === 'super_admin' ? ' selected' : ''}>Administrador</option>` : ''}</select>
+      <select data-rol><option value="alumno"${p.role === 'alumno' ? ' selected' : ''}>Alumno</option><option value="profesor"${p.role === 'profesor' ? ' selected' : ''}>Profesor</option><option value="responsable_sede"${p.role === 'responsable_sede' ? ' selected' : ''}>Responsable de Sede</option><option value="loc"${p.role === 'loc' ? ' selected' : ''}>LOC</option>${profile.role === 'super_admin' ? `<option value="asistente_online"${p.role === 'asistente_online' ? ' selected' : ''}>Asistente online</option>` : ''}${profile.es_super ? `<option value="super_admin"${p.role === 'super_admin' ? ' selected' : ''}>Administrador</option>` : ''}</select>
       <label class="sup"><input type="checkbox" data-sup${p.es_supervisor ? ' checked' : ''}${p.role === 'profesor' ? '' : ' disabled'}> Supervisor</label>
       <button class="btn-sm" data-guardar>Guardar</button>
       <div class="rl-extra" data-extra${p.role === 'profesor' ? '' : ' hidden'}>
@@ -548,6 +549,7 @@ window.rolesMontarHome = function(){
     h += iconoNav('🗒️', 'Equipo', 'Tareas', 'Tareas para ti y las que asignaste', 'rl-btn-tareas');
     h += iconoNav('📊', 'Empresa', 'Métricas de la empresa', 'Retención, ventas, protocolos, leads y más (maqueta)', 'rl-btn-metricas');
     if(esAdminEstricto()){
+      if (window.STCAsistenteOnline) h += iconoNav('👥', 'Equipo online', 'Asistente online', 'Altas, alumnos y profesores', 'rl-btn-asistente-online');
       h += iconoNav('🧭', 'Solo administrador', 'Checklist del Responsable de Sede', 'Ver lo que marcó el RS (vista del LOC)', 'rl-btn-ver-rs');
       h += `<button class="btn-toggle-rutina" id="rl-btn-perfiles"><span class="toggle-label">${ICONS.users} Perfiles y roles</span>${toggleStateHtml()}</button><div class="hidden" id="rl-perfiles-holder"></div>`;
     }
@@ -570,6 +572,8 @@ window.rolesMontarHome = function(){
   on('rl-btn-leads', () => renderMetricas(volver, ['leads'], 'Clases de prueba'));
   on('rl-btn-ck-sup-mio', () => abrirChecklist('supervisor', { volver, titulo: 'Mi checklist de supervisión' }));
   if(document.getElementById('rl-btn-perfiles')) wireToggle('rl-btn-perfiles', 'rl-perfiles-holder', () => montarGestionPerfiles('rl-perfiles-holder'));
+  const accesoAsistente = document.getElementById('rl-btn-asistente-online');
+  if(accesoAsistente) accesoAsistente.onclick = () => window.STCAsistenteOnline.home({volver: renderCoachHome});
 };
 
 window.renderLocHome = async function(){
