@@ -1,6 +1,6 @@
 // STC App — instalación, caché y notificaciones push.
 // No cachea datos de Supabase, solo el cascarón de la aplicación.
-const CACHE_NAME = 'stc-v27-asistente-online';
+const CACHE_NAME = 'stc-v28-asistente-online-whatsapp';
 const APP_SHELL = [
   "./stc-banco-akadia-0.js", "./stc-banco-akadia-1.js", "./stc-banco-akadia-2.js", "./stc-banco-akadia-3.js", "./stc-banco-akadia-4.js",
   "./elevacion-piernas-suelo.webp", "./giro-ruso.webp", "./rotacion-tronco-polea.webp", "./battle-rope.webp", "./sentadilla-bosu.webp", "./elevacion-cadera-suelo.webp", "./elevacion-cadera-banda.webp", "./aduccion-cadera-maquina.webp",

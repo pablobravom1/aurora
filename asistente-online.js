@@ -89,7 +89,16 @@
     };
   }
 
-  function correoBorrador(holder, email, mensaje) {
+  function normalizarWhatsApp(valor) {
+    const original = valor.trim();
+    if (!/^\+?[\d ().-]+$/.test(original)) return '';
+    const digitos = original.replace(/\D/g, '');
+    if (!original.startsWith('+') && /^[2-9]\d{8}$/.test(digitos)) return '56' + digitos;
+    if (/^56/.test(digitos)) return /^56[2-9]\d{8}$/.test(digitos) ? digitos : '';
+    return original.startsWith('+') && /^[1-9]\d{7,14}$/.test(digitos) ? digitos : '';
+  }
+
+  function prepararEntrega(holder, email, mensaje, numero) {
     const link = document.createElement('a');
     link.className = 'btn-sm';
     link.textContent = 'Abrir correo para el alumno';
@@ -102,23 +111,70 @@
     copiar.onclick = async () => {
       try {
         await navigator.clipboard.writeText(mensaje);
-        showToast('Mensaje copiado');
-      } catch { showToast('Abre el correo para enviar el mensaje.'); }
+        showToast('Mensaje copiado. Pégalo en el chat del alumno.');
+      } catch {
+        const vista = whatsapp.querySelector('textarea') || document.createElement('textarea');
+        vista.readOnly = true;
+        vista.setAttribute('aria-label', 'Instrucciones y clave temporal para copiar');
+        vista.value = mensaje;
+        whatsapp.open = true;
+        if (!vista.isConnected) whatsapp.append(vista);
+        vista.focus();
+        vista.select();
+      }
     };
-    holder.append(link, ' ', copiar);
+
+    const whatsapp = document.createElement('details');
+    whatsapp.style.marginTop = '12px';
+    whatsapp.open = Boolean(numero);
+    const titulo = document.createElement('summary');
+    titulo.textContent = 'Enviar por WhatsApp';
+    const etiqueta = document.createElement('label');
+    etiqueta.textContent = 'Número del alumno';
+    const telefono = document.createElement('input');
+    telefono.type = 'tel';
+    telefono.autocomplete = 'off';
+    telefono.maxLength = 28;
+    telefono.placeholder = '+56 9 0000 0000';
+    telefono.value = numero ? '+' + numero : '';
+    etiqueta.append(telefono);
+    const ayuda = document.createElement('p');
+    ayuda.className = 'sub';
+    ayuda.textContent = 'Copia las instrucciones y la clave. Abre WhatsApp, verifica el contacto y pega el mensaje.';
+    const abrir = document.createElement('a');
+    abrir.className = 'btn-sm';
+    abrir.textContent = 'Abrir WhatsApp';
+    abrir.target = '_blank';
+    abrir.rel = 'noopener noreferrer';
+    const validarTelefono = () => {
+      const valido = normalizarWhatsApp(telefono.value);
+      if (valido) {
+        // La clave se copia aparte. El enlace transmite solo el número elegido.
+        abrir.href = 'https://wa.me/' + valido;
+        abrir.removeAttribute('aria-disabled');
+      } else {
+        abrir.removeAttribute('href');
+        abrir.setAttribute('aria-disabled', 'true');
+      }
+      telefono.setCustomValidity(telefono.value.trim() && !valido ? 'Revisa el número y el código de país.' : '');
+    };
+    telefono.oninput = validarTelefono;
+    validarTelefono();
+    whatsapp.append(titulo, etiqueta, ayuda, abrir);
+    holder.append(link, ' ', copiar, whatsapp);
   }
 
-  async function gestionarAlta(holder, body) {
+  async function gestionarAlta(holder, body, numero) {
     holder.textContent = 'Procesando…';
-    const resultado = await alta({...body, enviar: true}, true);
+    const resultado = await alta({...body, enviar: !numero}, true);
     if (!holder.isConnected) return false;
     if (resultado.estado === 'correo_enviado') {
       holder.textContent = 'Cuenta lista. La invitación se envió al correo indicado.';
       return true;
     }
     if (resultado.estado === 'borrador' && typeof resultado.mensaje === 'string') {
-      holder.textContent = 'Cuenta lista. Abre el correo, revisa el destinatario y envíalo. ';
-      correoBorrador(holder, body.email, resultado.mensaje);
+      holder.textContent = 'Cuenta lista. Elige cómo enviar el acceso al alumno. ';
+      prepararEntrega(holder, body.email, resultado.mensaje, numero);
       return true;
     }
     holder.textContent = errores[resultado.estado] || errores.servicio;
@@ -128,6 +184,7 @@
   function montarAlta(form, alCrear) {
     const btn = form.querySelector('button');
     const estado = form.querySelector('[data-alta-estado]');
+    const telefono = form.querySelector('[name=whatsapp]');
     form.onsubmit = async (event) => {
       event.preventDefault();
       const nombre = form.querySelector('[name=nombre]').value.trim();
@@ -137,9 +194,15 @@
         estado.textContent = 'Los correos no coinciden. Revísalos antes de crear la cuenta.';
         return;
       }
+      const numero = normalizarWhatsApp(telefono.value);
+      if (telefono.value.trim() && !numero) {
+        estado.textContent = 'Revisa el número de WhatsApp. Usa 9 dígitos en Chile o incluye el código de país.';
+        telefono.focus();
+        return;
+      }
       btn.disabled = true;
-      if (await gestionarAlta(estado, {accion: 'crear', email, nombre})) {
-        form.reset();
+      if (await gestionarAlta(estado, {accion: 'crear', email, nombre}, numero)) {
+        for (const campo of [form.elements.nombre, form.elements.email, form.elements.confirmacion, telefono]) campo.value = '';
         await alCrear();
       }
       btn.disabled = false;
@@ -168,7 +231,7 @@
         <button type="submit" class="btn-sm">Guardar asignación</button>
         <span aria-live="polite" data-asignacion-estado></span>
       </form>
-      ${a.email && ['vencida', 'pendiente'].includes(a.cuenta) ? '<button type="button" class="btn-sm" data-renovar>Emitir y enviar otra clave</button><p aria-live="polite" data-renovacion></p>' : ''}
+      ${a.email && ['vencida', 'pendiente'].includes(a.cuenta) ? '<label>WhatsApp para otra clave (opcional)<input type="tel" data-whatsapp-renovar maxlength="28" autocomplete="off" placeholder="+56 9 0000 0000"></label><button type="button" class="btn-sm" data-renovar>Emitir y enviar otra clave</button><div aria-live="polite" data-renovacion></div>' : ''}
       <div data-actividad aria-live="polite"></div>
     </details>`;
   }
@@ -206,8 +269,10 @@
         <input name="email" id="online-email" type="email" maxlength="254" autocomplete="off" required>
         <label for="online-confirmacion">Confirma el correo</label>
         <input name="confirmacion" id="online-confirmacion" type="email" maxlength="254" autocomplete="off" required>
+        <label for="online-whatsapp">WhatsApp (opcional)</label>
+        <input name="whatsapp" id="online-whatsapp" type="tel" maxlength="28" autocomplete="off" placeholder="+56 9 0000 0000">
         <button type="submit" class="btn">Crear cuenta y enviar credenciales</button>
-        <p aria-live="polite" data-alta-estado></p>
+        <div aria-live="polite" data-alta-estado></div>
       </form>
       <details class="card" id="online-profesores"><summary><strong>Gestión de profesores</strong></summary>
         <div data-profesores aria-live="polite"></div>
@@ -268,9 +333,17 @@
         };
         const renovar = row.querySelector('[data-renovar]');
         if (renovar) renovar.onclick = async () => {
+          const estado = row.querySelector('[data-renovacion]');
+          const telefono = row.querySelector('[data-whatsapp-renovar]');
+          const numero = normalizarWhatsApp(telefono.value);
+          if (telefono.value.trim() && !numero) {
+            estado.textContent = 'Revisa el número de WhatsApp o deja el campo vacío.';
+            telefono.focus();
+            return;
+          }
           if (!window.confirm('¿Emitir una nueva clave para ' + alumno.email + '? La anterior dejará de funcionar.')) return;
           renovar.disabled = true;
-          await gestionarAlta(row.querySelector('[data-renovacion]'), {accion: 'reemitir', email: alumno.email});
+          await gestionarAlta(estado, {accion: 'reemitir', email: alumno.email}, numero);
           renovar.disabled = false;
         };
       });
